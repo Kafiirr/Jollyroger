@@ -1,0 +1,188 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 폰트(Fredoka/Noto Serif KR/Gochi Hand)는 app/layout.tsx의 next/font가 셀프호스팅으로 로드 */
+
+body {
+  @apply bg-bg text-cream font-sans overflow-hidden;
+}
+
+/* 방 배경 앰비언트 그라디언트 — Scene(방)과 ScreenShell(오브젝트 화면)이 공유 */
+.bg-room-ambient {
+  background: radial-gradient(ellipse 75% 75% at 50% 45%, #1a1233, #0a0716 62%, #050409);
+}
+
+/* 커서 — 화면 전체 네온 퍼플 화살표(24px, 로드 실패 시 기본 폴백). hotspot = 화살표 tip(4,2).
+   대안: 포켓볼(원본 public/mouse_cursor_v2_48.png)로 되돌릴 수 있음. */
+html,
+body {
+  cursor: url("/cursor-neon-arrow.svg") 4 2, auto;
+}
+/* 클릭 가능 요소도 같은 포켓볼(손가락 폴백) */
+a,
+button:enabled,
+[role="button"],
+.hotspot-cursor:enabled {
+  cursor: url("/cursor-neon-arrow.svg") 4 2, pointer;
+}
+
+/* 로그인 인트로 — 울리는 핸드폰. "지잉… (쉼) … 지잉" 실제 전화 진동 패턴:
+   한 사이클 2.2s 중 앞 40%만 흔들리고 나머지는 정지.
+   시작은 방 밝아짐(0.9s)이 끝난 뒤 1.2s 지연. */
+@keyframes ring-shake {
+  0%, 45%, 100% { transform: rotate(0deg); }
+  6% { transform: rotate(-2.4deg); }
+  13% { transform: rotate(2.4deg); }
+  20% { transform: rotate(-1.8deg); }
+  27% { transform: rotate(1.8deg); }
+  34% { transform: rotate(-1.2deg); }
+  40% { transform: rotate(0.9deg); }
+}
+.animate-ring {
+  /* 클론은 밝은 원본 이미지 조각이라, 방이 밝아지기 전에 보이면 밝은 네모로 뜬다.
+     fade-in(1.2s 지연)으로 방 밝아짐(0.9s)이 끝난 뒤에야 나타나게 함 */
+  animation:
+    fade-in 0.3s ease-out 1.2s both,
+    ring-shake 2.2s ease-in-out 1.2s infinite;
+  transform-origin: 50% 88%;
+}
+
+/* 울리는 폰 주변 글로우 — 방이 밝아진 뒤 은은하게 떠오름 */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 울리는 폰 글로우 — 호버 시 밝아지는 그 밝기를 울리는 동안 상시로 얹는다(밤 방에서 변화가 없으면
+   어색하므로). fade-in(opacity)로 은은히 등장 + 버즈 타이밍에 살짝 커졌다 작아져 "울림"을 강조.
+   opacity는 fade-in이, scale은 ring-flare가 담당해 서로 안 부딪힘. */
+@keyframes ring-glow {
+  0%   { opacity: 0.4;  transform: scale(1); }     /* 벨 조용 = 은은한 기본 밝기(0으로 안 꺼짐) */
+  8%   { opacity: 1;    transform: scale(1.16); }  /* 버즈 시작 = 확 밝고 커짐 */
+  40%  { opacity: 0.92; transform: scale(1.08); }  /* 버즈 지속 */
+  58%  { opacity: 0.4;  transform: scale(1); }     /* 조용해지면 기본 밝기로 부드럽게 복귀 */
+  100% { opacity: 0.4;  transform: scale(1); }
+}
+.animate-ring-glow {
+  /* 소리(useRingSound)·흔들림(ring-shake)의 buzz 구간(≈0–40%)에만 밝게, 조용해지는 45%부터 확 꺼진다.
+     opacity=밝기, scale=크기를 한 애니메이션에서 같이 처리(fade-in과 안 부딪히게 단일 애니메이션). */
+  animation: ring-glow 2.2s ease-in-out 1.2s infinite both;
+  transform-origin: 50% 88%;
+}
+
+/* 진입 스플래시 — "화면을 탭해서 입장" 안내가 은은히 숨쉬며 탭을 유도한다. */
+@keyframes tap-hint {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.animate-tap-hint {
+  animation: tap-hint 2.4s ease-in-out infinite;
+}
+
+/* 진열장 전시(갤러리) 모드 — 검은 화면에 카드 한 장이 스포트라이트로 슝 들어왔다,
+   느리게 줌(Ken Burns) 되며 감상, 슝 빠져나간다. */
+@keyframes gallery-spotlight {
+  0%   { opacity: 0; transform: translateX(48px) scale(0.97); }
+  12%  { opacity: 1; transform: translateX(0) scale(1); }
+  86%  { opacity: 1; transform: translateX(0) scale(1.05); }
+  100% { opacity: 0; transform: translateX(-48px) scale(1.06); }
+}
+/* 모션 최소화 — 이동/줌 없이 크로스페이드만 */
+@keyframes gallery-fade {
+  0%, 100% { opacity: 0; }
+  15%, 85% { opacity: 1; }
+}
+/* 배경 카드 드리프트 — 한 벌 복제해 -50% 이동하면 이음새 없이 무한 흐름 */
+@keyframes gallery-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* 앨범 스티커 확대 상세 — 팝인 */
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.92); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* 컴퓨터 미니게임 — 카드 5장/10장 리워드 연출 */
+@keyframes card-pop {
+  0% { transform: scale(0) rotate(-10deg); opacity: 0; }
+  55% { transform: scale(1.18) rotate(4deg); opacity: 1; }
+  75% { transform: scale(0.94) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.animate-card-pop {
+  animation: card-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes celebration-glow {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.12); }
+}
+.animate-celebration-glow {
+  animation: celebration-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes firework-burst {
+  0% { left: 50%; top: 50%; opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  15% { opacity: 1; }
+  100% { left: var(--fw-left); top: var(--fw-top); opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+.animate-firework {
+  animation: firework-burst 1s ease-out both;
+}
+
+@keyframes sparkle-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(45deg); }
+}
+.animate-sparkle {
+  animation: sparkle-twinkle 1.1s ease-in-out infinite;
+}
+
+@keyframes reward-label-in {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-reward-label {
+  animation: reward-label-in 0.4s ease-out 0.5s both;
+}
+
+/* 시작 화면 — 카드가 위에서 아래로 계속 떨어지는 비 연출. top을 직접 움직여서(부모 기준 %) 컨테이너 크기와 무관하게 동작 */
+@keyframes card-fall {
+  0% { top: -18%; opacity: 0; transform: rotate(0deg); }
+  8% { opacity: 0.85; }
+  92% { opacity: 0.85; }
+  100% { top: 112%; opacity: 0; transform: rotate(var(--card-spin, 360deg)); }
+}
+.animate-card-fall {
+  animation-name: card-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* 시작 화면 — 캐릭터가 왼쪽에서 오른쪽으로 계속 달려가다 끝에 닿으면 다시 왼쪽부터 반복 */
+@keyframes run-across {
+  0% { left: -14%; }
+  100% { left: 112%; }
+}
+.animate-run-across {
+  animation: run-across 4.2s linear infinite;
+}
+
+/* Custom Scrollbars for Webkit */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(183, 140, 255, 0.4); /* amber tint */
+}
