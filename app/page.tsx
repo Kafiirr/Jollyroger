@@ -1,5 +1,11 @@
 import { Scene } from "@/components/scene/Scene";
+import { DesktopOnlyGuard } from "@/components/scene/DesktopOnlyGuard";
 
 export default function Home() {
-  return <Scene />;
+  return (
+    <DesktopOnlyGuard>
+      <Scene />
+    </DesktopOnlyGuard>
+  );
 }
+
