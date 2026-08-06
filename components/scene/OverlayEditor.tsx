@@ -21,7 +21,9 @@ const CORNER_LABEL: Record<CornerKey, string> = { tl: "TL", tr: "TR", br: "BR", 
 /**  overlay corners > clip() > area()   */
 function seedCorners(spot: Spot): Corners {
   if (spot.overlay) return spot.overlay.corners;
-  if (spot.clip) return spot.clip; // clip
+  if (spot.clip && Array.isArray(spot.clip) && spot.clip.length >= 4) {
+    return { tl: spot.clip[0], tr: spot.clip[1], br: spot.clip[2], bl: spot.clip[3] };
+  }
   const { left, top, width, height } = spot.area;
   return {
     tl: [left, top],

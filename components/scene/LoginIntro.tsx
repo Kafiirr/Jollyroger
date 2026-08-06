@@ -18,7 +18,7 @@ export function LoginIntro({ onLogin, onCancel }: { onLogin: () => void; onCance
   const [cviStatus, setCviStatus] = useState<'idle' | 'loading' | 'verified' | 'error'>('idle');
   const [cviData, setCviData] = useState<{ aPassId: string; verificationTier: string } | null>(null);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isWalletConnected = Boolean(isConnected && address);
 

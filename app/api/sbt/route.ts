@@ -79,7 +79,7 @@ export async function GET(req: Request) {
   try {
     const onchain = await getSbtsFromContract(SBT_CONTRACT, WALLET);
     const usable = onchain.filter((s) => s.imageUrl || s.title);
-    for (const [i, s] of usable.entries()) {
+    usable.forEach((s, i) => {
       realSbts.push({
         id: s.tokenId || `onchain-${i}`,
         title: s.title ?? `SBT #${s.tokenId}`,
@@ -90,7 +90,7 @@ export async function GET(req: Request) {
         category: "On-Chain",
         unlocked: true,
       });
-    }
+    });
   } catch {
     // Contract query fallback
   }
