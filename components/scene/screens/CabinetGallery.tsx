@@ -121,7 +121,7 @@ function CardArt({ card }: { card: GalleryCard }) {
           src={card.imageUrl}
           alt={card.name}
           draggable={false}
-          className="w-[268%] max-w-none -ml-[84.5%] -mt-[68%] pointer-events-none select-none"
+          className="w-full h-full object-cover pointer-events-none select-none"
         />
       </div>
     );
@@ -144,7 +144,7 @@ function DriftThumb({ card }: { card: GalleryCard }) {
     >
       {card.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={card.imageUrl} alt="" draggable={false} className="w-[268%] max-w-none -ml-[84.5%] -mt-[68%] pointer-events-none select-none" />
+        <img src={card.imageUrl} alt="" draggable={false} className="w-full h-full object-cover pointer-events-none select-none" />
       ) : (
         <span className="grid place-items-center h-full text-4xl">{card.emoji}</span>
       )}

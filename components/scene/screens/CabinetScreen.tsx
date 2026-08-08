@@ -116,7 +116,7 @@ async function fetchOnchainCards(
           priceUsd: c.priceUsd,
           tokenId: c.tokenId, // (/api/showcase?ids=) + Renaiss
           // → Renaiss  ()
-          priceUrl: c.tokenId ? `https://www.renaiss.xyz/card/${c.tokenId}` : undefined,
+          priceUrl: c.tokenId ? `https://renaissos.com/card/${c.tokenId}` : undefined,
           acquiredAt: c.acquiredAt ?? "",
           origin: "onchain" as const,
         })),
@@ -156,7 +156,7 @@ function rowToCard(r: SavedRow, i: number): ShelfCard {
     tokenId: r.token_id ?? undefined,
     // → Renaiss   (token_id  )
     priceUrl:
-      r.origin === "onchain" && r.token_id ? `https://www.renaiss.xyz/card/${r.token_id}` : undefined,
+      r.origin === "onchain" && r.token_id ? `https://renaissos.com/card/${r.token_id}` : undefined,
     fromDb: true,
   };
 }
@@ -480,7 +480,7 @@ export function CabinetScreen({ onClose }: { onClose: () => void }) {
         tint: TINTS[prev.length % TINTS.length],
         priceUrl:
           input.origin === "onchain" && input.tokenId
-            ? `https://www.renaiss.xyz/card/${input.tokenId}`
+            ? `https://renaissos.com/card/${input.tokenId}`
             : undefined,
         fromDb: true,
       },
@@ -1024,14 +1024,14 @@ export function CabinetScreen({ onClose }: { onClose: () => void }) {
                           <MagnifyingGlassPlus size={10} weight="bold" /> Inspect
                         </span>
 
-                        {/* Slab Image — Cropped to card only */}
+                        {/* Slab Image */}
                         <div className="w-full aspect-[5/7] relative rounded-xl overflow-hidden border border-cream/15 bg-inkdark/80 select-none shadow-md">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={c.imageUrl}
                             alt={c.name}
                             draggable={false}
-                            className="w-[268%] max-w-none -ml-[84.5%] -mt-[68%] group-hover:scale-105 transition-transform duration-300 pointer-events-none select-none"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none select-none"
                           />
                         </div>
 
@@ -1123,16 +1123,15 @@ function CardLoupeInspector({
     const rect = e.currentTarget.getBoundingClientRect();
     const cx = e.clientX - rect.left;
     const cy = e.clientY - rect.top;
-    const dispW = rect.width * OC_SCALE;
-    const dispH = rect.width * OC_SCALE;
-    const offX = rect.width * OC_OFF_X;
-    const offY = rect.width * OC_OFF_Y;
+    const zoom = 2.0;
+    const dispW = rect.width * zoom;
+    const dispH = rect.height * zoom;
 
     setLens({
       x: cx,
       y: cy,
-      bgSize: `${dispW * MODAL_LOUPE_ZOOM}px ${dispH * MODAL_LOUPE_ZOOM}px`,
-      bgPos: `${LOUPE_SIZE / 2 - (cx + offX) * MODAL_LOUPE_ZOOM}px ${LOUPE_SIZE / 2 - (cy + offY) * MODAL_LOUPE_ZOOM}px`,
+      bgSize: `${dispW}px ${dispH}px`,
+      bgPos: `${LOUPE_SIZE / 2 - cx * zoom}px ${LOUPE_SIZE / 2 - cy * zoom}px`,
     });
   };
 
@@ -1142,16 +1141,15 @@ function CardLoupeInspector({
     const rect = e.currentTarget.getBoundingClientRect();
     const cx = touch.clientX - rect.left;
     const cy = touch.clientY - rect.top;
-    const dispW = rect.width * OC_SCALE;
-    const dispH = rect.width * OC_SCALE;
-    const offX = rect.width * OC_OFF_X;
-    const offY = rect.width * OC_OFF_Y;
+    const zoom = 2.0;
+    const dispW = rect.width * zoom;
+    const dispH = rect.height * zoom;
 
     setLens({
       x: cx,
       y: cy,
-      bgSize: `${dispW * MODAL_LOUPE_ZOOM}px ${dispH * MODAL_LOUPE_ZOOM}px`,
-      bgPos: `${LOUPE_SIZE / 2 - (cx + offX) * MODAL_LOUPE_ZOOM}px ${LOUPE_SIZE / 2 - (cy + offY) * MODAL_LOUPE_ZOOM}px`,
+      bgSize: `${dispW}px ${dispH}px`,
+      bgPos: `${LOUPE_SIZE / 2 - cx * zoom}px ${LOUPE_SIZE / 2 - cy * zoom}px`,
     });
   };
 
@@ -1163,13 +1161,12 @@ function CardLoupeInspector({
       onTouchEnd={() => setLens(null)}
       className="relative w-[210px] sm:w-[230px] aspect-[5/7] rounded-2xl overflow-hidden cursor-crosshair select-none bg-inkdark/90 border border-cream/20 drop-shadow-[0_15px_35px_rgba(0,0,0,0.85)] mx-auto group shadow-[inset_0_1px_0_theme(colors.cream/20%)]"
     >
-      {/* Cropped Card Image — only the card slab without studio canvas, stand, or Renaiss badge */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={imageUrl}
         alt={name}
         draggable={false}
-        className="w-[268%] max-w-none -ml-[84.5%] -mt-[68%] pointer-events-none select-none"
+        className="w-full h-full object-cover pointer-events-none select-none"
       />
 
       {/* Magnifying Glass Loupe Lens */}
@@ -2005,24 +2002,19 @@ function GradedSlab({
   );
   const canZoom = zoomable && !!card.imageUrl;
 
-  // —     (w-268%/-ml-84.5%/-mt-68%)
-  // ·    .
   function handleMove(e: React.MouseEvent<HTMLDivElement>) {
     if (!canZoom) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const cx = e.clientX - rect.left;
     const cy = e.clientY - rect.top;
-    const oc = card.origin === "onchain";
-    const dispW = oc ? rect.width * OC_SCALE : rect.width;
-    const dispH = oc ? rect.width * OC_SCALE : rect.height; //
-    const offX = oc ? rect.width * OC_OFF_X : 0;
-    const offY = oc ? rect.width * OC_OFF_Y : 0;
+    const zoom = 1.8;
+    const dispW = rect.width * zoom;
+    const dispH = rect.height * zoom;
     setLens({
       x: cx,
       y: cy,
-      bgSize: `${dispW * LOUPE_ZOOM}px ${dispH * LOUPE_ZOOM}px`,
-      //
-      bgPos: `${LOUPE / 2 - (cx + offX) * LOUPE_ZOOM}px ${LOUPE / 2 - (cy + offY) * LOUPE_ZOOM}px`,
+      bgSize: `${dispW}px ${dispH}px`,
+      bgPos: `${LOUPE / 2 - cx * zoom}px ${LOUPE / 2 - cy * zoom}px`,
     });
   }
 
@@ -2049,17 +2041,7 @@ function GradedSlab({
         }`}
         style={card.imageUrl ? undefined : { background: card.tint }}
       >
-        {card.imageUrl && card.origin === "onchain" ? (
-          // Renaiss  (440×440 )
-          // (  PSA ·     )
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={card.imageUrl}
-            alt={card.name}
-            draggable={false}
-            className="w-[268%] max-w-none -ml-[84.5%] -mt-[68%]"
-          />
-        ) : card.imageUrl ? (
+        {card.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={card.imageUrl}

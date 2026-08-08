@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { searchTcgCards } from "@/lib/api/apitcg";
 import { APITCG_GAMES } from "@/lib/api/apitcgGames";
-import { listCollectibles, getCardDetail } from "@/lib/api/renaiss";
+import { listCollectibles, getCardDetail, searchRenaissCards } from "@/lib/api/renaiss";
 import type { RenaissListedCard } from "@/lib/api/renaiss";
 import { supabase } from "@/lib/supabase";
 import { keccak256, toHex, createWalletClient, createPublicClient, http, defineChain } from "viem";
@@ -21,6 +21,63 @@ const OP_KEYWORDS = [
   "Luffy", "Zoro", "Nami", "Law", "Ace", "Shanks",
   "Kaido", "Sanji", "Robin", "Yamato", "Enel", "Katakuri",
   "Buggy", "Whitebeard", "Doflamingo", "Crocodile", "Hancock", "Roger", "Uta"
+];
+
+const FALLBACK_MYSTERY_CARDS = [
+  {
+    name: "Monkey.D.Luffy [Gear 5 / OP05-119 SEC]",
+    grade: "PSA 10 Gem Mint",
+    franchise: "ONE PIECE TCG",
+    priceUsd: 185.0,
+    imageUrl: "/api/img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP05-119.png",
+    certNumber: "8849201",
+    tokenId: "OP05-119-SEC",
+  },
+  {
+    name: "Roronoa Zoro [Super Pre-Release / OP01-025 SR]",
+    grade: "BGS 10 Pristine",
+    franchise: "ONE PIECE TCG",
+    priceUsd: 440.0,
+    imageUrl: "/api/img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-025.png",
+    certNumber: "9124853",
+    tokenId: "OP01-025-SR",
+  },
+  {
+    name: "Nami [Parallel Art / OP01-016 R]",
+    grade: "PSA 10 Gem Mint",
+    franchise: "ONE PIECE TCG",
+    priceUsd: 295.0,
+    imageUrl: "/api/img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-016_p1.png",
+    certNumber: "7731940",
+    tokenId: "OP01-016-PAR",
+  },
+  {
+    name: "Trafalgar Law [Manga Alt Art / OP05-069 SR]",
+    grade: "PSA 10 Gem Mint",
+    franchise: "ONE PIECE TCG",
+    priceUsd: 620.0,
+    imageUrl: "/api/img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP05-069.png",
+    certNumber: "6519284",
+    tokenId: "OP05-069-SR",
+  },
+  {
+    name: "Portgas.D.Ace [Super Parallel / OP02-013 SR]",
+    grade: "BGS 9.5 Gem Mint",
+    franchise: "ONE PIECE TCG",
+    priceUsd: 780.0,
+    imageUrl: "/api/img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP02-013.png",
+    certNumber: "8402915",
+    tokenId: "OP02-013-SR",
+  },
+  {
+    name: "Shanks [Manga Secret Rare / OP01-120 SEC]",
+    grade: "BGS 10 Black Label",
+    franchise: "ONE PIECE TCG",
+    priceUsd: 1150.0,
+    imageUrl: "/api/img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-120.png",
+    certNumber: "9948123",
+    tokenId: "OP01-120-SEC",
+  },
 ];
 
 // GET: Check 24-hour rolling cooldown status
@@ -118,66 +175,61 @@ export async function POST(request: Request) {
       tokenId: string;
     } | null = null;
 
-    // 2. Primary Image Source: Clean Raw TCG Card Art from APITCG / Official One Piece Card API
+    // 2. Primary Source: RenaissOS Protocol API
     try {
-      const keyword = OP_KEYWORDS[Math.floor(Math.random() * OP_KEYWORDS.length)];
-      const opGame = APITCG_GAMES.find((g) => g.id === "one-piece") || APITCG_GAMES[0];
-      const apiCards = await searchTcgCards(opGame, keyword, 15);
-      if (apiCards && apiCards.length > 0) {
-        const picked = apiCards[Math.floor(Math.random() * apiCards.length)];
-        const grades = isGold
-          ? ["BGS 10 Pristine", "PSA 10 Gem Mint", "BGS 9.5 Black Label"]
-          : ["PSA 9 Mint", "BGS 9.5 Gem Mint", "PSA 10 Gem Mint"];
-        
+      const randomKeyword = OP_KEYWORDS[Math.floor(Math.random() * OP_KEYWORDS.length)];
+      const searchCards = await searchRenaissCards({ game: "one-piece", q: randomKeyword, limit: 15 });
+      if (searchCards && searchCards.length > 0) {
+        const picked = searchCards[Math.floor(Math.random() * searchCards.length)];
+        const price = picked.priceUsdCents ? picked.priceUsdCents / 100 : isGold ? 450 : 180;
+        const img = picked.imageUrl || picked.imageUrlThumb || "";
+
         selectedCard = {
           name: picked.name,
-          grade: grades[Math.floor(Math.random() * grades.length)],
+          grade: picked.gradeLabel || picked.grade || (isGold ? "BGS 10 Pristine" : "PSA 10 Gem Mint"),
           franchise: "ONE PIECE TCG",
-          priceUsd: isGold ? Math.floor(320 + Math.random() * 680) : Math.floor(80 + Math.random() * 260),
-          imageUrl: picked.imageUrl.startsWith("http") ? `/api/img?url=${encodeURIComponent(picked.imageUrl)}` : picked.imageUrl,
+          priceUsd: price,
+          imageUrl: img || `/api/img?url=${encodeURIComponent("https://en.onepiece-cardgame.com/images/cardlist/card/OP05-119.png")}`,
           certNumber: Math.floor(1000000 + Math.random() * 9000000).toString(),
           tokenId: picked.id || `OP-MYSTERY-${Date.now()}`,
         };
       }
-    } catch (e) {
-      console.warn("APITCG fetch in mystery claim warning:", e);
+    } catch (renaissErr) {
+      console.warn("RenaissOS search in mystery claim warning:", renaissErr);
     }
 
-    // 3. Secondary Source: Renaiss Protocol API (extracting card code for clean art if available)
+    // 3. Secondary Source: APITCG API
     if (!selectedCard) {
       try {
-        const renaissList: RenaissListedCard[] = (await listCollectibles({ categoryFilter: "ONE_PIECE", limit: 30 })) || [];
-        if (renaissList.length > 0) {
-          const pickedItem = renaissList[Math.floor(Math.random() * renaissList.length)];
-          const detail = await getCardDetail(pickedItem.tokenId);
-          const fmvNum = parseFloat(detail.fmvPriceInUSD) || parseFloat(detail.askPriceInUSDT) || (isGold ? 450 : 180);
+        const keyword = OP_KEYWORDS[Math.floor(Math.random() * OP_KEYWORDS.length)];
+        const opGame = APITCG_GAMES.find((g) => g.id === "one-piece") || APITCG_GAMES[0];
+        const apiCards = await searchTcgCards(opGame, keyword, 15);
+        if (apiCards && apiCards.length > 0) {
+          const picked = apiCards[Math.floor(Math.random() * apiCards.length)];
+          const grades = isGold
+            ? ["BGS 10 Pristine", "PSA 10 Gem Mint", "BGS 9.5 Black Label"]
+            : ["PSA 9 Mint", "BGS 9.5 Gem Mint", "PSA 10 Gem Mint"];
 
           selectedCard = {
-            name: detail.name || pickedItem.name || "One Piece Collectible",
-            grade: detail.grade
-              ? `${detail.gradingCompany || "PSA"} ${detail.grade}`
-              : isGold ? "BGS 10 Pristine" : "PSA 10 Gem Mint",
+            name: picked.name,
+            grade: grades[Math.floor(Math.random() * grades.length)],
             franchise: "ONE PIECE TCG",
-            priceUsd: fmvNum,
-            imageUrl: detail.frontWithoutStandImageUrl || `/api/img?url=${encodeURIComponent("https://en.onepiece-cardgame.com/images/cardlist/card/OP05-119.png")}`,
+            priceUsd: isGold ? Math.floor(320 + Math.random() * 680) : Math.floor(80 + Math.random() * 260),
+            imageUrl: picked.imageUrl.startsWith("http") ? `/api/img?url=${encodeURIComponent(picked.imageUrl)}` : picked.imageUrl,
             certNumber: Math.floor(1000000 + Math.random() * 9000000).toString(),
-            tokenId: detail.tokenId || `OP-RENAISS-${Date.now()}`,
+            tokenId: picked.id || `OP-MYSTERY-${Date.now()}`,
           };
         }
-      } catch (renaissErr) {
-        console.warn("Renaiss API fetch in mystery claim warning:", renaissErr);
+      } catch (e) {
+        console.warn("APITCG fetch in mystery claim warning:", e);
       }
     }
 
-    // 4. Fallback with randomized card selection & official clean TCG art
+    // 4. Fallback with randomized curated card selection
     if (!selectedCard) {
-      const fallbackKeyword = OP_KEYWORDS[Math.floor(Math.random() * OP_KEYWORDS.length)];
+      const pickedFallback = FALLBACK_MYSTERY_CARDS[Math.floor(Math.random() * FALLBACK_MYSTERY_CARDS.length)];
       selectedCard = {
-        name: `${fallbackKeyword} [Parallel Art SR] #${Math.floor(1 + Math.random() * 100)}`,
-        grade: isGold ? "BGS 10 Pristine" : "PSA 10 Gem Mint",
-        franchise: "ONE PIECE TCG",
-        priceUsd: isGold ? 450 : 180,
-        imageUrl: "/api/img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP05-119.png",
+        ...pickedFallback,
         certNumber: Math.floor(1000000 + Math.random() * 9000000).toString(),
         tokenId: `OP-MYSTERY-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       };
