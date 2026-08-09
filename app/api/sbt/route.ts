@@ -97,11 +97,26 @@ export async function GET(req: Request) {
 
   // 4. Compute Real Badges from Supabase DB Activity
   try {
-    const { data: cards } = await supabase
-      .from("showcase_cards")
-      .select("id, created_at, name")
-      .or(`room_id.eq.${wallet},wallet_address.eq.${wallet}`)
-      .order("created_at", { ascending: true });
+    const isValidWallet = wallet && wallet.startsWith("0x") && wallet !== "0xdemowallet";
+    
+    let cards: { id: string; created_at: string; name: string }[] | null = null;
+    let claims: { id: string; claimed_at: string }[] | null = null;
+
+    if (isValidWallet) {
+      const { data: dbCards } = await supabase
+        .from("showcase_cards")
+        .select("id, created_at, name")
+        .eq("wallet_address", wallet)
+        .order("created_at", { ascending: true });
+      cards = dbCards;
+
+      const { data: dbClaims } = await supabase
+        .from("daily_mystery_claims")
+        .select("id, claimed_at")
+        .eq("wallet_address", wallet)
+        .order("claimed_at", { ascending: true });
+      claims = dbClaims;
+    }
 
     const cardCount = cards?.length ?? 0;
 
@@ -138,12 +153,6 @@ export async function GET(req: Request) {
     }
 
     // Check daily_mystery_claims count
-    const { data: claims } = await supabase
-      .from("daily_mystery_claims")
-      .select("id, claimed_at")
-      .or(`room_id.eq.${wallet},wallet_address.eq.${wallet}`)
-      .order("claimed_at", { ascending: true });
-
     const claimCount = claims?.length ?? 0;
     if (claimCount > 0) {
       realSbts.push({

@@ -23,9 +23,11 @@ export function LedgerScreen({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const target = isOwnRoom && address
-        ? address.toLowerCase()
-        : (room.walletAddress ? room.walletAddress.toLowerCase() : room.id.toLowerCase());
+      const target = (address || (room.walletAddress && room.walletAddress.startsWith("0x") ? room.walletAddress : "") || "").toLowerCase();
+      if (!target || !target.startsWith("0x")) {
+        setCards([]);
+        return;
+      }
       try {
         const res = await fetch(`/api/showcase?user=${encodeURIComponent(target)}`);
         if (!res.ok) return;
@@ -38,7 +40,7 @@ export function LedgerScreen({ onClose }: { onClose: () => void }) {
       }
     })();
     return () => { alive = false; };
-  }, [room.walletAddress, room.id, address, isOwnRoom]);
+  }, [room.walletAddress, address]);
 
   const ledgerItems = cards.map((card) => {
     const cvaAssetId = `cva_${card.tokenId.slice(0, 10)}`;

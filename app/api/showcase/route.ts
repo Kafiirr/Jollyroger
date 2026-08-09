@@ -74,15 +74,22 @@ export async function GET(req: Request) {
     new URL(req.url).searchParams.get("user")?.trim() || process.env.RENAISS_SHOWCASE_USER;
   if (!user) return NextResponse.json({ cards: [] });
 
-  // Handle EVM Wallet Address (0x...) or local room IDs (e.g. "home") -> Query Supabase DB showcase_cards table
+  // Handle EVM Wallet Address (0x...) or local room IDs -> Query Supabase DB showcase_cards table
   if (user.toLowerCase().startsWith("0x") || user.toLowerCase() === "home" || !user.includes(".")) {
     try {
       const { supabase } = await import("@/lib/supabase");
       const target = user.toLowerCase();
+
+      // For unauthenticated / home view without wallet, return empty (clean state)
+      if (target === "home" || target === "0xdemowallet") {
+        return NextResponse.json({ cards: [] });
+      }
+
+      // Query strictly by user's wallet address
       const { data } = await supabase
         .from("showcase_cards")
         .select("*")
-        .or(`room_id.eq.${target},wallet_address.eq.${target},room_id.eq.home,wallet_address.eq.home`)
+        .eq("wallet_address", target)
         .order("created_at", { ascending: false });
 
       if (data && data.length > 0) {
