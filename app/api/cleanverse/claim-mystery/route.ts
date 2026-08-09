@@ -84,18 +84,26 @@ const FALLBACK_MYSTERY_CARDS = [
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const walletAddress = searchParams.get("walletAddress") || "0xDemoWallet";
-    const roomId = searchParams.get("roomId") || walletAddress;
+    const walletAddress = searchParams.get("walletAddress");
 
-    const activeWallet = walletAddress.toLowerCase();
-    const activeRoom = roomId.toLowerCase();
+    // Cooldown is strictly scoped per user wallet address
+    const activeWallet = walletAddress && walletAddress !== "0xDemoWallet" && walletAddress !== "home"
+      ? walletAddress.toLowerCase()
+      : null;
+
+    if (!activeWallet) {
+      return NextResponse.json({
+        hasClaimedToday: false,
+        remainingSeconds: 0,
+      });
+    }
 
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
     const { data } = await supabase
       .from("daily_mystery_claims")
       .select("id, card_id, claimed_at")
-      .or(`wallet_address.eq.${activeWallet},room_id.eq.${activeRoom}`)
+      .eq("wallet_address", activeWallet)
       .gte("claimed_at", twentyFourHoursAgo)
       .order("claimed_at", { ascending: false })
       .limit(1);
@@ -128,17 +136,26 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { walletAddress, roomId, packType: requestedPack } = body;
-    const activeWallet = walletAddress || "0xDemoWallet";
-    const activeRoom = (roomId || activeWallet).toLowerCase();
+    const activeWallet = walletAddress && walletAddress !== "0xDemoWallet" && walletAddress !== "home"
+      ? walletAddress.toLowerCase()
+      : null;
+    const activeRoom = (roomId || activeWallet || "home").toLowerCase();
     const todayStr = new Date().toISOString().slice(0, 10);
 
-    // 1. Enforce 24-hour rolling cooldown database check
+    if (!activeWallet) {
+      return NextResponse.json(
+        { error: "Please connect your wallet to claim your daily mystery drop." },
+        { status: 400 }
+      );
+    }
+
+    // 1. Enforce 24-hour rolling cooldown database check strictly per wallet
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     try {
       const { data: recentClaims } = await supabase
         .from("daily_mystery_claims")
         .select("id, claimed_at")
-        .or(`wallet_address.eq.${activeWallet.toLowerCase()},room_id.eq.${activeRoom}`)
+        .eq("wallet_address", activeWallet)
         .gte("claimed_at", twentyFourHoursAgo)
         .order("claimed_at", { ascending: false })
         .limit(1);
