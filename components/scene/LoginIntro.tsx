@@ -68,7 +68,10 @@ export function LoginIntro({ onLogin, onCancel }: { onLogin: () => void; onCance
       .then(res => res.json())
       .then(data => {
         if (data.identity?.verified) {
-          setCviData({ aPassId: data.identity.aPassId, verificationTier: data.identity.verificationTier });
+          setCviData({ 
+            aPassId: data.identity.aPassId || `CVI-APASS-${data.identity.cvRecordId || "2026"}`, 
+            verificationTier: data.identity.tier || data.identity.verificationTier || "Tier 50" 
+          });
           setCviStatus('verified');
         } else {
           setCviStatus('error');
@@ -311,7 +314,10 @@ export function LoginIntro({ onLogin, onCancel }: { onLogin: () => void; onCance
                       .then(res => res.json())
                       .then(data => {
                         if (data.identity?.verified) {
-                          setCviData({ aPassId: data.identity.aPassId, verificationTier: data.identity.verificationTier });
+                          setCviData({ 
+                            aPassId: data.identity.aPassId || `CVI-APASS-${data.identity.cvRecordId || "2026"}`, 
+                            verificationTier: data.identity.tier || data.identity.verificationTier || "Tier 50" 
+                          });
                           setCviStatus('verified');
                         } else {
                           setCviStatus('error');

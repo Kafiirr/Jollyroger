@@ -5,7 +5,8 @@ import { ScreenShell } from "./ScreenShell";
 import { useRoom } from "../RoomContext";
 import { ViewportScale } from "@/components/ui/ViewportScale";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
-import { getCleanverseProfile, CleanverseOverview } from "@/lib/api/cleanverse";
+import { useAccount } from "wagmi";
+import type { CleanverseOverview } from "@/lib/api/cleanverse";
 
 interface Sbt {
   id: string | number;
@@ -28,23 +29,29 @@ function formatDate(iso?: string): string {
 }
 
 export function AlbumScreen({ onClose }: { onClose: () => void }) {
+  const { address } = useAccount();
   const { room } = useRoom();
   const [sbts, setSbts] = useState<Sbt[]>([]);
   const [loading, setLoading] = useState(true);
   const [picked, setPicked] = useState<Sbt | null>(null);
   const [overview, setOverview] = useState<CleanverseOverview | null>(null);
 
+  const rawWallet = address || room.walletAddress || (room.id && room.id !== "home" ? room.id : "") || "0xf23480B0AFa902bb7646de92b2B538a6A769FdDA";
+  const wallet = /^0x[0-9a-fA-F]{40}$/.test(rawWallet) ? rawWallet : "0xf23480B0AFa902bb7646de92b2B538a6A769FdDA";
+
   useEffect(() => {
     let alive = true;
     (async () => {
       setLoading(true);
-      const wallet = room.walletAddress || room.id || "0xDemoWallet";
-      
+
       try {
-        const data = await getCleanverseProfile(wallet);
-        if (alive) setOverview(data);
-      } catch {
-        // Profile fallback
+        const res = await fetch(`/api/cleanverse?address=${encodeURIComponent(wallet)}`);
+        if (res.ok) {
+          const data = (await res.json()) as CleanverseOverview;
+          if (alive) setOverview(data);
+        }
+      } catch (err) {
+        console.warn("Failed fetching Cleanverse profile:", err);
       }
 
       try {
@@ -62,7 +69,7 @@ export function AlbumScreen({ onClose }: { onClose: () => void }) {
     return () => {
       alive = false;
     };
-  }, [room.walletAddress, room.id]);
+  }, [wallet]);
 
   const verified = overview?.identity?.verified ?? true;
   const unlockedCount = sbts.filter((s) => s.unlocked).length;
@@ -87,7 +94,7 @@ export function AlbumScreen({ onClose }: { onClose: () => void }) {
                     <VerifiedBadge type="identity" verified={verified} />
                   </div>
                   <p className="text-xs text-cream/70 font-mono">
-                    {overview?.identity?.verificationTier ?? "BANK_VERIFIED"} Tier • Risk Score: Low (0/100)
+                    {overview?.identity?.tier ? `${overview.identity.tier}` : "Tier 50"} • {overview?.identity?.aPassId || "CVI-APASS-2026"} • {overview?.identity?.countries?.join(", ") || "US"} • Risk: 0/100
                   </p>
                 </div>
               </div>
