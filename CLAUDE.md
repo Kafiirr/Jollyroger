@@ -13,7 +13,7 @@
 ## 🏛 Architectural Concept & Core Invariants
 
 1. **Scene-Driven Experience**: Features are accessed via interactive furniture hotspots rather than traditional tabular dashboards. Clicking furniture smooth-zooms the camera to open dedicated modal screens.
-2. **Stable Furniture Hotspot IDs**: Business logic binds to invariant Spot IDs (`phone`, `cabinet`, `computer`, `photo`, `album`, `note`, `escrow`, `ledger`) configured in [lib/spots.ts](file:///home/kafir/renaiss/lib/spots.ts).
+2. **Stable Furniture Hotspot IDs**: Business logic binds to invariant Spot IDs (`phone`, `cabinet`, `computer`, `photo`, `album`, `note`, `escrow`, `ledger`) configured in [lib/spots.ts](lib/spots.ts).
 3. **Single File per Furniture Screen**: Each object screen resides in a standalone file inside `components/scene/screens/<Xxx>Screen.tsx` accepting only `{ onClose }`.
 4. **Time-of-Day Dynamic Environment**: Room image automatically switches between daytime (`room_bright_v3.png`) and nighttime (`room_dark_v3.png`) based on visitor local time.
 5. **English-Only UI**: All user-facing UI copy and internal documentation must be written in English.
@@ -26,7 +26,7 @@
 - **Web3 & Contracts**: RainbowKit / Wagmi / Viem on Creditcoin CC3 Testnet (`CreditcoinRWAVaultASC.sol` at `0x1a8757a621b0ac08aa91312e282307fb2e21b87f`) & Ethereum Sepolia (`PhysicalVaultEscrow.sol` at `0x0068856c80535b518dbe2a10b56e3c25f9139bb4`)
 - **Safety & Enforcement**: Global NetworkGuard (`components/ui/NetworkGuard.tsx`) auto-prompting CC3 (`102031`) with action-level chain hard-pinning
 - **Cross-Chain Attestation**: Creditcoin Native Block Prover Precompile (`0x0000000000000000000000000000000000000FD2`) & EvmV1Decoder (`0x731c345d79Fb8BbDC541f9DF3b6317585F849F9f`)
-- **Styling**: Tailwind CSS with custom design tokens (see [DESIGN.md](file:///home/kafir/renaiss/DESIGN.md))
+- **Styling**: Tailwind CSS with custom design tokens (see [DESIGN.md](DESIGN.md))
 - **State Management**: React Context API & useState (no global state library overhead)
 - **Database**: Supabase (PostgreSQL with RLS) for guestbook entries and claims
 - **Storage**: Cloudflare R2 direct pre-signed client uploads

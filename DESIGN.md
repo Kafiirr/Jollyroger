@@ -49,7 +49,7 @@ Dark base background with neon purple accent lighting. Designed for TCG collecto
 | **Room Entrance** | `transform 1.8s cubic-bezier(0.22, 0.8, 0.2, 1)`, scale `0.72 → 1.0` (`ease-entrance`) |
 | **Panel Transition** | `opacity` + `translate 0.45s` |
 | **Hotspot Hover Pop** | Scaled overlay clip `scale(1 → 1.05)` + opacity over `0.2s` |
-| **Smartphone Ringing** | `animate-ring` keyframe (shake cycle over 2.2s in [app/globals.css](file:///home/kafir/renaiss/app/globals.css)) |
+| **Smartphone Ringing** | `animate-ring` keyframe (shake cycle over 2.2s in [app/globals.css](app/globals.css)) |
 | **Card Item Hover** | `translateX(3px)` + background highlight over `0.15s` |
 
 ---

@@ -3,7 +3,14 @@ import fs from "fs";
 import { createPublicClient, createWalletClient, http, defineChain } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
-const env = fs.readFileSync("/home/kafir/renaiss/.env.local", "utf8");
+import path from "path";
+
+const envPath = path.resolve(".env.local");
+if (!fs.existsSync(envPath)) {
+  console.error("Missing .env.local");
+  process.exit(1);
+}
+const env = fs.readFileSync(envPath, "utf8");
 const pkey = env.match(/PRIVATE_KEY=([^\r\n]+)/)[1].trim();
 
 const CREDITCOIN_RWA_VAULT_ADDRESS = "0x1a8757a621b0ac08aa91312e282307fb2e21b87f";

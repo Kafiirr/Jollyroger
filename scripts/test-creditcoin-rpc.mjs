@@ -11,7 +11,14 @@ const creditcoinTestnet = defineChain({
   },
 });
 
-const env = fs.readFileSync("/home/kafir/renaiss/.env.local", "utf8");
+import path from "path";
+
+const envPath = path.resolve(".env.local");
+if (!fs.existsSync(envPath)) {
+  console.error("Missing .env.local");
+  process.exit(1);
+}
+const env = fs.readFileSync(envPath, "utf8");
 const pk = env.match(/PRIVATE_KEY=([^\r\n]+)/)[1].trim();
 const account = privateKeyToAccount(pk);
 console.log("Wallet address for PRIVATE_KEY:", account.address);

@@ -45,7 +45,7 @@ npm run dev
 - **Web3 & Smart Contracts**:
   - Creditcoin CC3 Testnet & Ethereum Sepolia dual-chain integration via `viem`, `wagmi`, and RainbowKit
   - Cross-Chain Block Prover Precompile (`0x0FD2`) verification for physical vault deposits
-  - Smart Contracts: [`CreditcoinRWAVaultASC.sol`](file:///home/kafir/renaiss/contracts/CreditcoinRWAVaultASC.sol) & [`PhysicalVaultEscrow.sol`](file:///home/kafir/renaiss/contracts/PhysicalVaultEscrow.sol)
+  - Smart Contracts: [`CreditcoinRWAVaultASC.sol`](contracts/CreditcoinRWAVaultASC.sol) & [`PhysicalVaultEscrow.sol`](contracts/PhysicalVaultEscrow.sol)
 - **Styling & Design System**:
   - [Tailwind CSS](https://tailwindcss.com/) with a curated Dark Base + Neon Purple design system
   - **Typography**: Fredoka (UI/Body), Noto Serif KR (Headings), Gochi Hand (Guestbook handwriting), Press Start 2P (Pixel art)
@@ -88,7 +88,7 @@ Collectors play retro arcade mini-games to earn verified game rewards and Credit
 
 ## 🛋️ Furniture & Hotspot Mappings
 
-Hotspots are mapped to stable Spot IDs defined in [lib/spots.ts](file:///home/kafir/renaiss/lib/spots.ts).
+Hotspots are mapped to stable Spot IDs defined in [lib/spots.ts](lib/spots.ts).
 
 | Furniture / Object | Spot ID | Functionality |
 |---|---|---|
@@ -108,10 +108,10 @@ Hotspots are mapped to stable Spot IDs defined in [lib/spots.ts](file:///home/ka
 ## 📡 Data Sources & Integrations
 
 - **Attestcoin Block Prover Precompile (`0x0FD2`)**: Cryptographic cross-chain state verification on Creditcoin CC3
-- **Renaiss API**: Public profile, avatar, showcase, and dynamic One Piece TCG cards ([lib/api/renaiss.ts](file:///home/kafir/renaiss/lib/api/renaiss.ts))
-- **apitcg.com**: Card metadata and images ([lib/api/apitcg.ts](file:///home/kafir/renaiss/lib/api/apitcg.ts))
-- **Supabase**: Remote guestbook storage, user profiles, & daily claim rate limits ([lib/supabase.ts](file:///home/kafir/renaiss/lib/supabase.ts))
-- **PokemonPriceTracker**: Real-time physical card market valuation ([lib/api/prices.ts](file:///home/kafir/renaiss/lib/api/prices.ts))
+- **Renaiss API**: Public profile, avatar, showcase, and dynamic One Piece TCG cards ([lib/api/renaiss.ts](lib/api/renaiss.ts))
+- **apitcg.com**: Card metadata and images ([lib/api/apitcg.ts](lib/api/apitcg.ts))
+- **Supabase**: Remote guestbook storage, user profiles, & daily claim rate limits ([lib/supabase.ts](lib/supabase.ts))
+- **PokemonPriceTracker**: Real-time physical card market valuation ([lib/api/prices.ts](lib/api/prices.ts))
 
 ---
 
@@ -156,4 +156,4 @@ scripts/                    # Contract deployment and database migration scripts
 - **Always use English for code, comments, and UI copy.**
 - Do not commit `.env.local` or private keys.
 - Do not make direct commits to `main`; work on feature branches and submit PRs.
-- Refer to [CLAUDE.md](file:///home/kafir/renaiss/CLAUDE.md) for detailed architectural context and [DESIGN.md](file:///home/kafir/renaiss/DESIGN.md) for design system tokens.
+- Refer to [CLAUDE.md](CLAUDE.md) for detailed architectural context and [DESIGN.md](DESIGN.md) for design system tokens.

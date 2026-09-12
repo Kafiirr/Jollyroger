@@ -1,7 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
-import fs from "fs";
+import path from "path";
 
-const env = fs.readFileSync("/home/kafir/renaiss/.env.local", "utf8");
+const envPath = path.resolve(".env.local");
+if (!fs.existsSync(envPath)) {
+  console.error("Missing .env.local");
+  process.exit(1);
+}
+const env = fs.readFileSync(envPath, "utf8");
 const url = env.match(/NEXT_PUBLIC_SUPABASE_URL=([^\r\n]+)/)[1].trim();
 const key = env.match(/SUPABASE_SERVICE_ROLE_KEY=([^\r\n]+)/)?.[1]?.trim() || env.match(/NEXT_PUBLIC_SUPABASE_ANON_KEY=([^\r\n]+)/)[1].trim();
 

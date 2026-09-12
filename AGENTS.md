@@ -1,7 +1,7 @@
 # AGENTS.md — AI Agent & Developer Guardrails
 
 > Primary entry document for AI coding assistants (Codex, Claude, etc.).
-> **Refer to [CLAUDE.md](file:///home/kafir/renaiss/CLAUDE.md) for full context and [DESIGN.md](file:///home/kafir/renaiss/DESIGN.md) for design tokens.**
+> **Refer to [CLAUDE.md](CLAUDE.md) for full context and [DESIGN.md](DESIGN.md) for design tokens.**
 
 ---
 
