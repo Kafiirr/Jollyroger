@@ -1,5 +1,5 @@
 /**
- * Room system — identifies rooms by EVM wallet address (Monad).
+ * Room system — identifies rooms by EVM wallet address (Creditcoin / EVM).
  * URL param: ?room=0xABC...DEF  → visit that wallet's room.
  * Home room = "home" (the currently connected wallet's own room).
  */

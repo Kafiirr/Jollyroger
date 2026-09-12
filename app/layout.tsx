@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fredoka, Noto_Serif_KR, Gochi_Hand, Press_Start_2P } from "next/font/google";
 import { Web3Provider } from "@/components/providers/Web3Provider";
+import { NetworkGuard } from "@/components/ui/NetworkGuard";
 import "./globals.css";
 
 /*  next/font  —  /FOIT   (globals.css @import ).
@@ -50,7 +51,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${fredoka.variable} ${notoSerifKr.variable} ${gochiHand.variable} ${pressStart2p.variable}`}
     >
       <body>
-        <Web3Provider>{children}</Web3Provider>
+        <Web3Provider>
+          {children}
+          <NetworkGuard />
+        </Web3Provider>
       </body>
     </html>
   );

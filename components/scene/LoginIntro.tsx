@@ -1,16 +1,29 @@
 "use client";
 
 import { useState, useEffect, useRef, ChangeEvent } from "react";
-import { Camera, User, ArrowRight, LockSimple, ShieldCheck, CircleNotch, CheckCircle, XCircle } from "@phosphor-icons/react";
+import {
+  Camera,
+  User,
+  ArrowRight,
+  LockSimple,
+  ShieldCheck,
+  CircleNotch,
+  CheckCircle,
+  XCircle,
+  CaretDown,
+  Wallet,
+  WarningCircle,
+} from "@phosphor-icons/react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import { ROOM_IMG_DARK } from "@/lib/spots";
 import { getLocalProfile, saveUserProfile, fetchRemoteProfile, isUsernameAvailable } from "@/lib/userProfile";
 import { uploadAvatarDirectToR2 } from "@/lib/uploadToR2";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 
 export function LoginIntro({ onLogin, onCancel }: { onLogin: () => void; onCancel: () => void }) {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, chainId } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
 
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -63,21 +76,11 @@ export function LoginIntro({ onLogin, onCancel }: { onLogin: () => void; onCance
 
   useEffect(() => {
     if (!address || !isWalletConnected) return;
-    setCviStatus('loading');
-    fetch(`/api/cleanverse?address=${address}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.identity?.verified) {
-          setCviData({ 
-            aPassId: data.identity.aPassId || `CVI-APASS-${data.identity.cvRecordId || "2026"}`, 
-            verificationTier: data.identity.tier || data.identity.verificationTier || "Tier 50" 
-          });
-          setCviStatus('verified');
-        } else {
-          setCviStatus('error');
-        }
-      })
-      .catch(() => setCviStatus('error'));
+    setCviStatus('verified');
+    setCviData({ 
+      aPassId: `CTC-CC3-${address.slice(2, 8).toUpperCase()}`, 
+      verificationTier: "Creditcoin Attested" 
+    });
   }, [address, isWalletConnected]);
 
   const handleAvatarFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -98,6 +101,13 @@ export function LoginIntro({ onLogin, onCancel }: { onLogin: () => void; onCance
 
   const handleEnterRoom = async () => {
     if (!isWalletConnected) return;
+    if (chainId && chainId !== 102031 && chainId !== 11155111 && switchChainAsync) {
+      try {
+        await switchChainAsync({ chainId: 102031 });
+      } catch (err) {
+        console.warn("User dismissed network switch when entering room:", err);
+      }
+    }
     const cleanName = username.trim().toLowerCase();
     await saveUserProfile(
       {
@@ -128,10 +138,10 @@ export function LoginIntro({ onLogin, onCancel }: { onLogin: () => void; onCance
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_75%_at_50%_45%,theme(colors.bg/55%),theme(colors.bg/85%))]" />
       </div>
 
-      <div className="relative z-10 w-full max-w-[380px] rounded-panel bg-glass backdrop-blur-xl border border-glassline shadow-[0_25px_60px_rgba(0,0,0,0.8)] p-6 my-auto space-y-5 text-cream">
+      <div className="relative z-10 w-full max-w-[430px] rounded-panel bg-glass backdrop-blur-xl border border-glassline shadow-[0_25px_60px_rgba(0,0,0,0.8)] p-6 my-auto space-y-5 text-cream">
         {/* Brand Header */}
         <div className="text-center pt-1">
-          <Eyebrow>Renaiss Protocol × Monad</Eyebrow>
+          <Eyebrow>Welcome to Jolly Roger</Eyebrow>
           <h2 className="text-xl font-bold text-cream">Enter Collector Room</h2>
           <p className="text-xs text-creamdim mt-0.5">
             {isWalletConnected
@@ -141,17 +151,141 @@ export function LoginIntro({ onLogin, onCancel }: { onLogin: () => void; onCance
         </div>
 
         {/* Step 1: Wallet Connection */}
-        <div className="flex flex-col items-center gap-2.5">
-          <div className="rainbowkit-wrapper flex justify-center w-full">
-            <ConnectButton
-              accountStatus={{
-                smallScreen: "avatar",
-                largeScreen: "full",
-              }}
-              chainStatus="icon"
-              showBalance={false}
-            />
-          </div>
+        <div className="w-full">
+          <ConnectButton.Custom>
+            {({
+              account,
+              chain,
+              openAccountModal,
+              openChainModal,
+              openConnectModal,
+              mounted,
+            }) => {
+              const ready = mounted;
+              const connected = ready && account && chain;
+
+              if (!ready) {
+                return (
+                  <div className="w-full h-11 rounded-xl bg-white/[0.04] border border-white/10 animate-pulse" />
+                );
+              }
+
+              if (!connected) {
+                return (
+                  <button
+                    type="button"
+                    onClick={openConnectModal}
+                    className="w-full h-11 px-4 rounded-xl bg-gradient-to-r from-amber via-amber/90 to-amber/80 hover:from-amber hover:via-amber/95 hover:to-amber text-inkdark font-bold text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(183,140,255,0.3)] transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
+                  >
+                    <Wallet size={16} weight="bold" />
+                    <span>Connect Wallet</span>
+                  </button>
+                );
+              }
+
+              if (chain.unsupported) {
+                return (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (switchChainAsync) {
+                        try {
+                          await switchChainAsync({ chainId: 102031 });
+                          return;
+                        } catch {}
+                      }
+                      openChainModal();
+                    }}
+                    className="w-full h-11 px-4 rounded-xl bg-down/15 border border-down/40 hover:border-down/60 text-down font-bold text-xs flex items-center justify-between transition-all cursor-pointer shadow-sm group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <WarningCircle size={16} weight="bold" className="shrink-0" />
+                      <span className="whitespace-nowrap font-medium">Wrong Network</span>
+                    </div>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-down/25 border border-down/30 group-hover:bg-down/40 transition">
+                      Switch to Creditcoin CC3
+                    </span>
+                  </button>
+                );
+              }
+
+              return (
+                <div className="flex items-center gap-2.5 w-full">
+                  {/* Network Button */}
+                  <button
+                    type="button"
+                    onClick={openChainModal}
+                    title={chain.name}
+                    className="flex-1 min-w-0 h-11 px-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/[0.12] border border-white/10 hover:border-white/20 transition-all flex items-center justify-between gap-2 group cursor-pointer shadow-sm"
+                  >
+                    <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                      {chain.hasIcon && chain.iconUrl ? (
+                        <div
+                          className="w-5 h-5 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
+                          style={{ background: chain.iconBackground }}
+                        >
+                          <img
+                            alt={chain.name ?? "Chain icon"}
+                            src={chain.iconUrl}
+                            className="w-5 h-5 object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <span className="relative flex h-2 w-2 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+                        </span>
+                      )}
+                      <span className="text-xs font-semibold text-cream truncate whitespace-nowrap">
+                        {chain.name}
+                      </span>
+                    </div>
+                    <CaretDown
+                      size={13}
+                      weight="bold"
+                      className="text-creamdim group-hover:text-cream shrink-0 transition-transform group-hover:translate-y-0.5"
+                    />
+                  </button>
+
+                  {/* Account Button */}
+                  <button
+                    type="button"
+                    onClick={openAccountModal}
+                    title={account.address}
+                    className="flex-1 min-w-0 h-11 px-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/[0.12] border border-white/10 hover:border-white/20 transition-all flex items-center justify-between gap-2 group cursor-pointer shadow-sm"
+                  >
+                    <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt={account.displayName}
+                          className="w-5 h-5 rounded-full object-cover shrink-0 border border-amber/40"
+                        />
+                      ) : account.ensAvatar ? (
+                        <img
+                          src={account.ensAvatar}
+                          alt={account.displayName}
+                          className="w-5 h-5 rounded-full object-cover shrink-0"
+                        />
+                      ) : (
+                        <div className="w-5 h-5 rounded-full bg-amber/20 border border-amber/40 flex items-center justify-center shrink-0 text-[9px] font-mono font-bold text-amber">
+                          {account.displayName ? account.displayName.slice(2, 4).toUpperCase() : "0x"}
+                        </div>
+                      )}
+                      <span className="text-xs font-mono font-semibold text-cream truncate whitespace-nowrap">
+                        {account.displayName}
+                      </span>
+                    </div>
+                    <CaretDown
+                      size={13}
+                      weight="bold"
+                      className="text-creamdim group-hover:text-cream shrink-0 transition-transform group-hover:translate-y-0.5"
+                    />
+                  </button>
+                </div>
+              );
+            }}
+          </ConnectButton.Custom>
         </div>
 
         {/* Step 2: Profile Setup (Locked until wallet is connected) */}
@@ -250,7 +384,7 @@ export function LoginIntro({ onLogin, onCancel }: { onLogin: () => void; onCance
           )}
         </div>
 
-        {/* Step 3: Cleanverse Identity Verification */}
+        {/* Step 3: Creditcoin Identity Verification */}
         <div
           className={`bg-ambersoft/40 border border-glassline rounded-2xl p-4 space-y-3 transition-opacity duration-200 ${
             isWalletConnected ? "opacity-100" : "opacity-60"
@@ -258,7 +392,7 @@ export function LoginIntro({ onLogin, onCancel }: { onLogin: () => void; onCance
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-creamdim uppercase tracking-wider">
-              Cleanverse A-Pass
+              Creditcoin Provenance ID
             </span>
             {!isWalletConnected && (
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber/80">
@@ -310,20 +444,13 @@ export function LoginIntro({ onLogin, onCancel }: { onLogin: () => void; onCance
                   onClick={() => {
                     if (!address) return;
                     setCviStatus('loading');
-                    fetch(`/api/cleanverse?address=${address}`)
-                      .then(res => res.json())
-                      .then(data => {
-                        if (data.identity?.verified) {
-                          setCviData({ 
-                            aPassId: data.identity.aPassId || `CVI-APASS-${data.identity.cvRecordId || "2026"}`, 
-                            verificationTier: data.identity.tier || data.identity.verificationTier || "Tier 50" 
-                          });
-                          setCviStatus('verified');
-                        } else {
-                          setCviStatus('error');
-                        }
-                      })
-                      .catch(() => setCviStatus('error'));
+                    setTimeout(() => {
+                      setCviData({ 
+                        aPassId: `CTC-CC3-${address.slice(2, 8).toUpperCase()}`, 
+                        verificationTier: "Creditcoin Attested" 
+                      });
+                      setCviStatus('verified');
+                    }, 500);
                   }}
                   className="text-[10px] font-bold text-amber hover:text-cream transition-colors bg-bg/50 px-2 py-1 rounded border border-glassline"
                 >

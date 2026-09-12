@@ -29,9 +29,9 @@ const CARD_MILESTONES = [
   { count: 25, title: "Vault Master (25 Cards)", glyph: "❖", color: "#9BE8A0", desc: "Curated 25 real graded collectible slabs in your Showcase Cabinet." },
   { count: 50, title: "Whale Collector (50 Cards)", glyph: "💎", color: "#6FE8C8", desc: "Curated 50 real graded collectible slabs in your Showcase Cabinet." },
   { count: 100, title: "Centurion (100 Cards)", glyph: "👑", color: "#B78CFF", desc: "Curated 100 real graded collectible slabs in your Showcase Cabinet." },
-  { count: 250, title: "Legendary Curator (250 Cards)", glyph: "⚡", color: "#a855f7", desc: "Curated 250 real graded collectible slabs on Monad." },
-  { count: 500, title: "Grandmaster (500 Cards)", glyph: "🔥", color: "#f97316", desc: "Curated 500 real graded collectible slabs on Monad." },
-  { count: 1000, title: "Supreme Emperor (1000 Cards)", glyph: "🏆", color: "#eab308", desc: "Achieved the pinnacle milestone of 1,000 real graded collectible slabs on Monad." },
+  { count: 250, title: "Legendary Curator (250 Cards)", glyph: "⚡", color: "#a855f7", desc: "Curated 250 real graded collectible slabs on Creditcoin CC3." },
+  { count: 500, title: "Grandmaster (500 Cards)", glyph: "🔥", color: "#f97316", desc: "Curated 500 real graded collectible slabs on Creditcoin CC3." },
+  { count: 1000, title: "Supreme Emperor (1000 Cards)", glyph: "🏆", color: "#eab308", desc: "Achieved the pinnacle milestone of 1,000 real graded collectible slabs on Creditcoin CC3." },
 ];
 
 export async function GET(req: Request) {
@@ -41,13 +41,13 @@ export async function GET(req: Request) {
 
   const realSbts: SbtDto[] = [];
 
-  // 1. CVI Identity Passport Badge
+  // 1. Creditcoin Provenance Passport Badge
   realSbts.push({
-    id: "badge-cvi-apass",
-    title: "CVI A-Pass Verified",
-    description: "Cleanverse Verified Identity Passport. Bank-verified credentials & ZK-proofs.",
+    id: "badge-creditcoin-passport",
+    title: "Creditcoin Provenance Verified",
+    description: "Attestcoin USC Cross-Chain Identity. Cryptographic precompile verification on Creditcoin CC3.",
     glyph: "🛡️",
-    color: "#a855f7",
+    color: "#00E599",
     category: "Identity",
     unlocked: true,
   });
@@ -174,7 +174,7 @@ export async function GET(req: Request) {
     realSbts.push({
       id: "badge-high-roller",
       title: "High Roller (Grail Owner)",
-      description: "Owner of high-tier One Piece collectible slabs with verified market valuation on Monad.",
+      description: "Owner of high-tier One Piece collectible slabs with verified market valuation on Creditcoin CC3.",
       glyph: "💎",
       color: "#ec4899",
       category: "RWA Valuation",

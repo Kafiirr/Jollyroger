@@ -5,12 +5,26 @@ import { getRoom, HOME_ROOM_ID, isValidAddress, Room } from "@/lib/rooms";
 import { useAvatar } from "@/lib/useAvatar";
 import { useProfileName } from "@/lib/useProfileName";
 import { useRoom } from "../RoomContext";
-import { verifyCCPTransaction, CCPCheckResult } from "@/lib/api/cleanverse";
-import { Check, Heart, House, Trash, ShieldCheck, X, FileText, CurrencyCircleDollar } from "@phosphor-icons/react";
 
-import { useAccount, useSendTransaction } from "wagmi";
+export interface AuditReport {
+  checkId: string;
+  senderAddress: string;
+  recipientAddress: string;
+  assetSymbol: string;
+  amount: string;
+  travelRuleStatus: string;
+  preTxRulePassed: boolean;
+  riskScore: number;
+  auditReportId: string;
+  timestamp: string;
+}
+import { Check, Heart, House, Trash, ShieldCheck, X, FileText, CurrencyCircleDollar, WarningCircle } from "@phosphor-icons/react";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useAccount, useSendTransaction, useSwitchChain } from "wagmi";
 import { parseEther } from "viem";
 import { getLocalProfile } from "@/lib/userProfile";
+
+export const CREDITCOIN_CHAIN_ID = 102031;
 
 /** EVM wallet address regex */
 const ETH_ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
@@ -27,7 +41,7 @@ type Guestbook = {
   created_at: string;
   likes?: number;
   comments?: Comment[] | null;
-  ccpReport?: CCPCheckResult | null;
+  ccpReport?: AuditReport | null;
 };
 
 /**   —   (UI   ) */
@@ -80,8 +94,10 @@ function Avatar({
 }
 
 export function NoteScreen({ onClose }: { onClose: () => void }) {
-  const { address } = useAccount();
+  const { address, isConnected, chainId } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const { sendTransactionAsync } = useSendTransaction();
+  const { switchChainAsync } = useSwitchChain();
   const { visitRoom } = useRoom();
   const [room, setRoom] = useState(getRoomFromUrl);
   const [message, setMessage] = useState("");
@@ -268,9 +284,50 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
   const [sendTip, setSendTip] = useState(false);
   const [tipAmount, setTipAmount] = useState("0.1");
   const [tipErr, setTipErr] = useState("");
-  const [selectedAuditReport, setSelectedAuditReport] = useState<CCPCheckResult | null>(null);
+  const [selectedAuditReport, setSelectedAuditReport] = useState<AuditReport | null>(null);
 
-  /** Handle signing and posting a note (with optional flexible MON gift) */
+  /** Automatically check and prompt wallet to switch to Creditcoin CC3 Testnet */
+  const ensureCreditcoinNetwork = async (): Promise<boolean> => {
+    if (!isConnected || !address) {
+      if (openConnectModal) openConnectModal();
+      setTipErr("Please connect your Web3 wallet first to send a tCTC gift.");
+      return false;
+    }
+    if (chainId === CREDITCOIN_CHAIN_ID) return true;
+    if (!switchChainAsync) {
+      setTipErr("Wallet does not support automatic network switching. Please switch to Creditcoin CC3 Testnet manually.");
+      return false;
+    }
+    try {
+      await switchChainAsync({ chainId: CREDITCOIN_CHAIN_ID });
+      return true;
+    } catch (err: any) {
+      console.warn("User rejected network switch or switch failed:", err);
+      setTipErr("Action canceled: You must switch to Creditcoin CC3 Testnet to send tCTC.");
+      return false;
+    }
+  };
+
+  /** Toggle gift option and proactively prompt network switch if on wrong network */
+  const handleToggleTip = async (checked: boolean) => {
+    setSendTip(checked);
+    if (tipErr) setTipErr("");
+    if (checked) {
+      if (!isConnected || !address) {
+        if (openConnectModal) openConnectModal();
+        return;
+      }
+      if (chainId !== CREDITCOIN_CHAIN_ID && switchChainAsync) {
+        try {
+          await switchChainAsync({ chainId: CREDITCOIN_CHAIN_ID });
+        } catch (err) {
+          console.warn("Switch network prompt dismissed:", err);
+        }
+      }
+    }
+  };
+
+  /** Handle signing and posting a note (with optional flexible tCTC gift) */
   async function handlePost() {
     if (!message.trim()) return;
     setLoading(true);
@@ -278,17 +335,31 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
 
     let txHash: string | undefined = undefined;
 
-    // Send MON Gift if checked
+    // Send tCTC Gift if checked
     if (sendTip) {
+      if (!isConnected || !address) {
+        setTipErr("Please connect your wallet first to send a tCTC gift.");
+        if (openConnectModal) openConnectModal();
+        setLoading(false);
+        return;
+      }
+
       const numAmount = Number(tipAmount);
       if (isNaN(numAmount) || numAmount <= 0) {
-        setTipErr("Please enter a valid MON gift amount.");
+        setTipErr("Please enter a valid tCTC gift amount.");
         setLoading(false);
         return;
       }
       const recipientAddress = room.walletAddress || (room.id.startsWith("0x") ? room.id : undefined);
       if (!recipientAddress || !ETH_ADDR_RE.test(recipientAddress)) {
-        setTipErr("Recipient does not have a valid EVM wallet address to receive MON.");
+        setTipErr("Recipient does not have a valid EVM wallet address to receive tCTC.");
+        setLoading(false);
+        return;
+      }
+
+      // Automatically ensure wallet is on Creditcoin CC3 Testnet BEFORE sending transaction
+      const isCorrectNetwork = await ensureCreditcoinNetwork();
+      if (!isCorrectNetwork) {
         setLoading(false);
         return;
       }
@@ -297,11 +368,12 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
         const hash = await sendTransactionAsync({
           to: recipientAddress as `0x${string}`,
           value: parseEther(tipAmount),
+          chainId: CREDITCOIN_CHAIN_ID,
         });
         txHash = hash;
       } catch (err: any) {
-        console.warn("MON transfer error:", err);
-        setTipErr(err?.shortMessage || err?.message || "Failed to send MON gift.");
+        console.warn("tCTC transfer error:", err);
+        setTipErr(err?.shortMessage || err?.message || "Failed to send tCTC gift.");
         setLoading(false);
         return;
       }
@@ -310,7 +382,7 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
     const noteText = message.trim();
     let finalContent = noteText;
     if (txHash) {
-      finalContent += `\n[🎁 Gifted ${tipAmount} MON | Tx: ${txHash}]`;
+      finalContent += `\n[🎁 Gifted ${tipAmount} tCTC | Tx: ${txHash}]`;
     }
     if (myNickname) {
       finalContent += `\n[Author: @${myNickname}]`;
@@ -398,7 +470,7 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
 
   return (
     <ScreenShell title="Guestbook" onClose={onClose}>
-      <div className="relative w-[min(94vw,880px)] h-[min(82vh,660px)] rounded-[18px] border border-glassline bg-glass backdrop-blur-md shadow-2xl overflow-hidden p-3">
+      <div className="relative w-[min(94vw,880px)] h-[min(88vh,680px)] rounded-[18px] border border-glassline bg-glass backdrop-blur-md shadow-2xl overflow-hidden p-3">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-3 rounded-[14px] bg-[radial-gradient(circle_at_18%_14%,theme(colors.amber/14%),transparent_25%),linear-gradient(105deg,theme(colors.cream),theme(colors.cream/90)_48%,theme(colors.creamdim/35)_50%,theme(colors.cream/90)_52%,theme(colors.cream)_100%)]"
@@ -409,11 +481,11 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
         />
 
         <div className="relative grid h-full text-inkdark grid-cols-1 grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[0.92fr_1.08fr] md:grid-rows-1">
-          <section className="min-h-0 flex flex-col border-b md:border-b-0 md:border-r border-inkdark/10 px-5 py-4 sm:px-7 sm:py-6">
+          <section className="min-h-0 flex flex-col border-b md:border-b-0 md:border-r border-inkdark/10 px-4 py-3 sm:px-6 sm:py-4 overflow-y-auto">
             <div className="shrink-0">
               <div className="text-[10px] font-bold uppercase tracking-[0.26em] text-inkdark/55">Notebook</div>
-              <h2 className="mt-1 font-serif text-3xl leading-none text-inkdark">Guestbook</h2>
-              <p className="mt-2 text-[13px] leading-relaxed text-inkdark/60">
+              <h2 className="mt-1 font-serif text-2xl sm:text-3xl leading-none text-inkdark">Guestbook</h2>
+              <p className="mt-1.5 text-xs leading-relaxed text-inkdark/60">
                 {isOwnRoom ? (
                   "Your guestbook. Visit another collector's room below."
                 ) : (
@@ -424,7 +496,7 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
 
             {/* Visit a Room Box — only shown in your own room */}
             {isOwnRoom && (
-            <div className="mt-5 shrink-0 rounded-xl border border-amber/20 bg-cream/50 p-3">
+            <div className="mt-4 shrink-0 rounded-xl border border-amber/20 bg-cream/50 p-3">
               <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-inkdark/45">Visit a room</div>
               <div className="mt-2 flex items-center gap-2">
                 <input
@@ -441,27 +513,27 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
                   }}
                   placeholder="Wallet address or username"
                   spellCheck={false}
-                  className={`${paperInputCls} min-w-0 flex-1 !py-2 font-mono text-[12px]`}
+                  className={`${paperInputCls} min-w-0 flex-1 !py-1.5 font-mono text-xs`}
                 />
                 <button
                   onClick={handleVisit}
                   disabled={!visitId.trim() || isSearching}
-                  className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-inkdark px-3 py-2 text-[13px] font-bold text-cream transition hover:brightness-125 disabled:opacity-40"
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-inkdark px-3 py-1.5 text-xs font-bold text-cream transition hover:brightness-125 disabled:opacity-40"
                 >
                   {isSearching ? (
-                    <span className="w-4 h-4 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />
+                    <span className="w-3.5 h-3.5 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />
                   ) : (
                     <>
-                      <House size={15} weight="fill" aria-hidden />
+                      <House size={14} weight="fill" aria-hidden />
                       Visit
                     </>
                   )}
                 </button>
               </div>
               {visitErr ? (
-                <p className="mt-1.5 text-[11px] font-semibold text-down">{visitErr}</p>
+                <p className="mt-1 text-[10px] font-semibold text-down">{visitErr}</p>
               ) : (
-                <p className="mt-1.5 text-[11px] text-inkdark/45">Enter a wallet address or username to visit their room.</p>
+                <p className="mt-1 text-[10px] text-inkdark/45">Enter a wallet address or username to visit their room.</p>
               )}
             </div>
             )}
@@ -469,49 +541,75 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
             {/* Signed as footer */}
             {!isOwnRoom && (
               <>
-                <div className="mt-4 shrink-0 flex items-center gap-3 rounded-xl border border-amber/20 bg-cream/50 p-3">
+                <div className="mt-2.5 shrink-0 flex items-center gap-2.5 rounded-xl border border-amber/20 bg-cream/50 px-3 py-1.5">
                   <Avatar
                     nickname={myNickname}
                     userId={address}
                     avatarUrl={localProfile.avatarUrl}
-                    size={38}
+                    size={30}
                   />
                   <div className="min-w-0">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-inkdark/45">Signed as</div>
-                    <div className="truncate text-sm font-bold text-inkdark">@{myNickname}</div>
+                    <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-inkdark/45">Signed as</div>
+                    <div className="truncate text-xs font-bold text-inkdark">@{myNickname}</div>
                   </div>
                 </div>
 
-                <div className="mt-4 flex min-h-0 flex-1 flex-col">
+                <div className="mt-2.5 flex min-h-0 flex-1 flex-col">
                   <textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder={`Write a note for ${ownerLabel}...`}
                     maxLength={160}
-                    className={`${paperInputCls} min-h-[88px] md:min-h-[110px] flex-1 resize-none`}
+                    className={`${paperInputCls} h-20 min-h-[64px] resize-none !py-2 !px-3 text-xs`}
                   />
 
-                  {/* Flexible MON Gift Option for Monad Testnet */}
-                  <div className="mt-2.5 p-3 rounded-xl bg-purple-900/10 border border-purple-500/20 space-y-2">
-                    <label className="flex items-center gap-2 cursor-pointer select-none text-[12px] font-medium text-inkdark">
+                  {/* Flexible tCTC Gift Option for Creditcoin CC3 Testnet */}
+                  <div className="mt-2 p-2.5 rounded-xl bg-purple-900/10 border border-purple-500/20 space-y-2 shrink-0">
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-medium text-inkdark">
                       <input
                         type="checkbox"
                         checked={sendTip}
-                        onChange={(e) => {
-                          setSendTip(e.target.checked);
-                          if (tipErr) setTipErr("");
-                        }}
-                        className="rounded accent-purple-600 w-4 h-4"
+                        onChange={(e) => handleToggleTip(e.target.checked)}
+                        className="rounded accent-purple-600 w-4 h-4 cursor-pointer"
                       />
                       <span className="flex items-center gap-1.5 font-bold text-purple-900">
-                        <CurrencyCircleDollar size={18} className="text-purple-600" />
-                        Attach MON Gift (Monad Testnet)
+                        <CurrencyCircleDollar size={17} className="text-purple-600" />
+                        Attach tCTC Gift (Creditcoin CC3)
                       </span>
                     </label>
 
                     {sendTip && (
-                      <div className="space-y-1.5 pl-6">
-                        <div className="flex items-center gap-2 text-[12px] text-inkdark/80">
+                      <div className="space-y-2 pl-6">
+                        {!isConnected ? (
+                          <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-950 text-xs">
+                            <span className="font-semibold text-[11px]">Connect wallet to send gifts</span>
+                            <button
+                              type="button"
+                              onClick={() => openConnectModal?.()}
+                              className="shrink-0 px-2.5 py-0.5 rounded bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] transition shadow-sm cursor-pointer"
+                            >
+                              Connect Wallet
+                            </button>
+                          </div>
+                        ) : chainId !== CREDITCOIN_CHAIN_ID ? (
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 p-2 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-950 text-xs">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <WarningCircle size={14} weight="bold" className="text-amber-600 shrink-0" />
+                              <span className="font-semibold text-[11px] whitespace-nowrap">
+                                Wrong network
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => ensureCreditcoinNetwork()}
+                              className="shrink-0 px-2.5 py-0.5 rounded bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] transition shadow-sm cursor-pointer self-start sm:self-auto"
+                            >
+                              Switch to Creditcoin CC3
+                            </button>
+                          </div>
+                        ) : null}
+
+                        <div className="flex items-center gap-2 text-xs text-inkdark/80">
                           <span className="font-semibold">Amount:</span>
                           <input
                             type="number"
@@ -523,31 +621,37 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
                               if (tipErr) setTipErr("");
                             }}
                             placeholder="0.1"
-                            className="w-28 bg-cream border border-purple-300 rounded-lg px-2.5 py-1 font-mono text-[12px] text-purple-950 font-bold outline-none focus:border-purple-600"
+                            className="w-24 bg-cream border border-purple-300 rounded-lg px-2 py-0.5 font-mono text-xs text-purple-950 font-bold outline-none focus:border-purple-600"
                           />
-                          <span className="font-bold text-purple-900">MON</span>
+                          <span className="font-bold text-purple-900">tCTC</span>
                         </div>
-                        <p className="text-[10px] text-purple-700 font-medium">
-                          On-chain transfer directly to recipient address ({room.walletAddress ? `${room.walletAddress.slice(0, 6)}...${room.walletAddress.slice(-4)}` : "room owner"})
+                        <p className="text-[10px] text-purple-700 font-medium leading-tight">
+                          On-chain transfer directly to recipient ({room.walletAddress ? `${room.walletAddress.slice(0, 6)}...${room.walletAddress.slice(-4)}` : "room owner"})
                         </p>
                       </div>
                     )}
-                    {tipErr && <p className="text-[11px] font-semibold text-down pl-6">{tipErr}</p>}
+                    {tipErr && <p className="text-[11px] font-semibold text-rose-600 pl-6">{tipErr}</p>}
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between gap-3">
+                  <div className="mt-2.5 pt-0.5 flex items-center justify-between gap-3 shrink-0">
                     <span className="text-[11px] font-semibold text-inkdark/45">{message.length}/160</span>
                     <button
                       onClick={handlePost}
                       disabled={loading || !message.trim()}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white px-4 py-2.5 text-sm font-bold transition shadow-sm disabled:opacity-40"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 text-xs sm:text-sm font-bold transition shadow-sm disabled:opacity-40 cursor-pointer"
                     >
                       {loading ? (
                         <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       ) : (
                         <>
-                          <Check size={16} weight="bold" aria-hidden />
-                          {sendTip ? `Send Note & ${tipAmount} MON Gift` : "Sign Note"}
+                          <Check size={15} weight="bold" aria-hidden />
+                          {sendTip && isConnected && chainId !== CREDITCOIN_CHAIN_ID
+                            ? "Switch Network & Send Note"
+                            : sendTip && !isConnected
+                            ? "Connect Wallet & Send Note"
+                            : sendTip
+                            ? `Send Note & ${tipAmount} tCTC Gift`
+                            : "Sign Note"}
                         </>
                       )}
                     </button>
@@ -586,8 +690,8 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
                 const no = visiblePosts.length - idx;
                 const comments = post.comments ?? [];
 
-                // Extract MON Gift tx info if present
-                const txMatch = post.message.match(/\[🎁 Gifted ([0-9.]+) MON \| Tx: (0x[0-9a-fA-F]+)\]/);
+                // Extract tCTC Gift tx info if present
+                const txMatch = post.message.match(/\[🎁 Gifted ([0-9.]+) tCTC \| Tx: (0x[0-9a-fA-F]+)\]/);
                 const cleanMsg = post.message.replace(/\[🎁 Gifted [^\]]+\]/, "").trim();
 
                 return (
@@ -633,17 +737,17 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
                           {cleanMsg}
                         </p>
 
-                        {/* On-Chain MON Gift Badge */}
+                        {/* On-Chain tCTC Gift Badge */}
                         {txMatch && (
                           <div className="mt-2.5 flex items-center gap-2">
                             <a
-                              href={`https://testnet.monadscan.com/tx/${txMatch[2]}`}
+                              href={`https://creditcoin-testnet.blockscout.com/tx/${txMatch[2]}`}
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-950/70 border border-purple-500/50 text-[11px] font-mono text-purple-200 hover:bg-purple-900 transition shadow-sm"
                             >
                               <CurrencyCircleDollar size={15} className="text-amber" />
-                              <span className="font-bold text-amber">{txMatch[1]} MON Gifted</span>
+                              <span className="font-bold text-amber">{txMatch[1]} tCTC Gifted</span>
                               <span className="text-[10px] text-purple-300 underline underline-offset-2 ml-1">
                                 View Tx
                               </span>
@@ -748,7 +852,7 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      {/* Cleanverse CCP Audit Report Modal */}
+      {/* Creditcoin On-Chain Audit Report Modal */}
       {selectedAuditReport && (
         <div className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setSelectedAuditReport(null)}>
           <div className="relative w-full max-w-md rounded-2xl bg-neutral-900 border border-purple-500/40 p-6 text-cream shadow-2xl space-y-4" onClick={(e) => e.stopPropagation()}>
@@ -758,7 +862,7 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
             <div className="flex items-center gap-2">
               <ShieldCheck size={24} className="text-emerald-400" />
               <div>
-                <h3 className="font-bold text-base text-white">Cleanverse CCP Audit Report</h3>
+                <h3 className="font-bold text-base text-white">Creditcoin On-Chain Audit Report</h3>
                 <p className="text-[10px] font-mono text-purple-300">ID: {selectedAuditReport.auditReportId}</p>
               </div>
             </div>
@@ -786,7 +890,7 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
               </div>
               <div className="flex justify-between">
                 <span className="text-neutral-400">Anchor Network:</span>
-                <span className="text-purple-400">Monad Testnet</span>
+                <span className="text-purple-400">Creditcoin CC3 Testnet</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-neutral-400">Timestamp:</span>
@@ -797,7 +901,7 @@ export function NoteScreen({ onClose }: { onClose: () => void }) {
             <div className="flex justify-end gap-2 pt-1">
               <button
                 onClick={() => {
-                  alert(`Audit report exported to Cleanverse Ledger (${selectedAuditReport.auditReportId})`);
+                  alert(`Audit report exported to Creditcoin Provenance Archive (${selectedAuditReport.auditReportId})`);
                   setSelectedAuditReport(null);
                 }}
                 className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-xl text-xs transition"

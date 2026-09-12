@@ -32,10 +32,10 @@ import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { supabase } from "@/lib/supabase";
 import { useAccount } from "wagmi";
 import { useRoom } from "../RoomContext";
-import { CLEANVERSE_RWA_CARD_ABI, CLEANVERSE_RWA_CARD_ADDRESS } from "@/lib/contracts/CleanverseRWACardABI";
+import { CREDITCOIN_RWA_VAULT_ABI, CREDITCOIN_RWA_VAULT_ADDRESS } from "@/lib/contracts/CreditcoinRWAVaultABI";
 import { CabinetGallery } from "./CabinetGallery";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
-import { CleanverseStatus } from "@/components/ui/CleanverseStatus";
+import { AttestcoinStatus } from "@/components/ui/AttestcoinStatus";
 
 /**
 *   .
@@ -112,10 +112,10 @@ async function fetchOnchainCards(
           franchise: c.franchise,
           emoji: "🎴",
           tint: TINTS[i % TINTS.length],
-          imageUrl: c.imageUrl,
+          imageUrl: sanitizePureCardUrl(c.imageUrl, c.name),
           priceUsd: c.priceUsd,
           tokenId: c.tokenId, // (/api/showcase?ids=) + Renaiss
-          // → Renaiss  ()
+          // → Renaiss ()
           priceUrl: c.tokenId ? `https://renaissos.com/card/${c.tokenId}` : undefined,
           acquiredAt: c.acquiredAt ?? "",
           origin: "onchain" as const,
@@ -126,6 +126,33 @@ async function fetchOnchainCards(
     //
   }
   return { fromFallback: true, cards: [] };
+}
+
+function sanitizePureCardUrl(url?: string | null, name?: string): string | undefined {
+  if (!url) return undefined;
+  if (
+    url.includes("standalone") ||
+    url.includes("golden") ||
+    url.includes("silver") ||
+    url.includes("graded-cards-renders")
+  ) {
+    const n = (name || "").toLowerCase();
+    if (n.includes("hancock")) return "/cards/boa-hancock-manga.png";
+    if (n.includes("nami")) return "/cards/nami-op01-sp.png";
+    if (n.includes("luffy") || n.includes("gear 5") || n.includes("monkey")) return "/cards/luffy-gear5-manga.png";
+    if (n.includes("shanks")) return "/cards/shanks-manga.png";
+    if (n.includes("zoro") || n.includes("roronoa")) return "/cards/zoro-manga.png";
+    if (n.includes("ace") || n.includes("portgas")) return "/cards/ace-manga.png";
+    if (n.includes("law") || n.includes("trafalgar")) return "/cards/law-leader-alt.png";
+    const match = n.match(/(OP\d{2}[-\s]?\d{3}|ST\d{2}[-\s]?\d{3}|EB\d{2}[-\s]?\d{3}|P[-\s]?\d{3})/i);
+    if (match) {
+      const clean = match[1].replace(/[-\s]/g, "");
+      const m = clean.match(/^([A-Z]{2,3}\d{2})(\d{3})$/);
+      if (m) return `/api/img?url=${encodeURIComponent(`https://en.onepiece-cardgame.com/images/cardlist/card/${m[1]}-${m[2]}.png`)}`;
+    }
+    return "/cards/luffy-gear5-manga.png";
+  }
+  return url;
 }
 
 /** Supabase showcase_cards   —   (/)   */
@@ -149,12 +176,12 @@ function rowToCard(r: SavedRow, i: number): ShelfCard {
     franchise: r.franchise ?? "",
     emoji: "🃏",
     tint: TINTS[i % TINTS.length],
-    imageUrl: r.image_url ?? undefined,
+    imageUrl: sanitizePureCardUrl(r.image_url, r.name),
     acquiredAt: r.acquired_at,
     createdAt: r.created_at,
     origin: r.origin === "onchain" ? "onchain" : "physical",
     tokenId: r.token_id ?? undefined,
-    // → Renaiss   (token_id  )
+    // → Renaiss (token_id)
     priceUrl:
       r.origin === "onchain" && r.token_id ? `https://renaissos.com/card/${r.token_id}` : undefined,
     fromDb: true,
@@ -226,6 +253,21 @@ function artKey(imageUrl?: string): string | null {
   return code ? code.toUpperCase() : raw;
 }
 
+/** Extracts the direct high-res image link from a card (resolving proxied /api/img?url= links). */
+function getCardImageLink(card: ShelfCard): string | undefined {
+  const url = card.imageUrl || card.priceUrl;
+  if (!url) return undefined;
+  const m = url.match(/[?&]url=([^&]+)/);
+  if (m) {
+    try {
+      return decodeURIComponent(m[1]);
+    } catch {
+      return url;
+    }
+  }
+  return url;
+}
+
 /* =================   ================= */
 
 type SortKey = "newest" | "oldest" | "priceHigh" | "priceLow";
@@ -284,7 +326,7 @@ export function CabinetScreen({ onClose }: { onClose: () => void }) {
       tokenId: string;
     }>;
     txHash: string;
-    monadExplorerUrl: string;
+    creditcoinExplorerUrl?: string;
   } | null>(null);
   const [inspectedCard, setInspectedCard] = useState<any | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -336,7 +378,7 @@ export function CabinetScreen({ onClose }: { onClose: () => void }) {
     setMintProgress("Preparing cards...");
 
     try {
-      const res = await fetch("/api/cleanverse/mint", {
+      const res = await fetch("/api/attestcoin/mint", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -365,14 +407,9 @@ export function CabinetScreen({ onClose }: { onClose: () => void }) {
         tokenId: string;
         origin: "physical";
         acquiredAt: string;
-        mintArgs: {
-          uri: string;
-          cvaAssetId: string;
-          traceabilityHash: `0x${string}`;
-        };
       }>;
 
-      setMintProgress(`Seamlessly minting ${cardsToMint.length} card${cardsToMint.length > 1 ? "s" : ""} on Monad Testnet...`);
+      setMintProgress(`Seamlessly minting ${cardsToMint.length} card${cardsToMint.length > 1 ? "s" : ""} on Creditcoin CC3 Testnet...`);
 
       const userRoomId = address.toLowerCase();
       for (const card of cardsToMint) {
@@ -401,7 +438,7 @@ export function CabinetScreen({ onClose }: { onClose: () => void }) {
       setMintedRwa({
         cards: cardsToMint,
         txHash: data.txHash || "0x",
-        monadExplorerUrl: `https://testnet.monadscan.com/tx/${data.txHash || "0x"}`,
+        creditcoinExplorerUrl: `https://creditcoin-testnet.blockscout.com/tx/${data.txHash || "0x"}`,
       });
     } catch (err) {
       console.warn("Claim error:", err);
@@ -797,7 +834,7 @@ export function CabinetScreen({ onClose }: { onClose: () => void }) {
                   className="w-full sm:w-auto bg-amber hover:bg-amber/90 text-inkdark font-extrabold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(183,140,255,0.4)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <ShieldCheck size={16} weight="bold" />
-                  <span>{isMintingUnclaimed ? (mintProgress || "Minting...") : `Mint ${unclaimedRewards.card_count} Card${unclaimedRewards.card_count > 1 ? "s" : ""} on Monad`}</span>
+                  <span>{isMintingUnclaimed ? (mintProgress || "Minting...") : `Mint ${unclaimedRewards.card_count} Card${unclaimedRewards.card_count > 1 ? "s" : ""} on Creditcoin CC3`}</span>
                 </button>
                 {claimError && (
                   <p className="text-[11px] text-down font-medium text-right mt-0.5">{claimError}</p>
@@ -882,7 +919,7 @@ export function CabinetScreen({ onClose }: { onClose: () => void }) {
             {isMintingUnclaimed ? (
               <div className="py-10 space-y-3 flex flex-col items-center">
                 <span className="w-12 h-12 rounded-full border-2 border-amber/30 border-t-amber animate-spin" />
-                <p className="text-sm text-amber font-bold animate-pulse">{mintProgress || "Minting card(s) on Monad Testnet..."}</p>
+                <p className="text-sm text-amber font-bold animate-pulse">{mintProgress || "Minting card(s) on Creditcoin CC3 Testnet..."}</p>
                 <p className="text-xs text-creamdim">Transaction initiated...</p>
               </div>
             ) : mintedRwa ? (
@@ -947,7 +984,7 @@ export function CabinetScreen({ onClose }: { onClose: () => void }) {
                   <div className="bg-ambersoft/40 rounded-xl p-3 border border-glassline text-xs font-mono space-y-1.5 text-left text-creamdim">
                     <div className="flex justify-between items-center">
                       <span>Network:</span>
-                      <span className="text-cream font-medium">Monad Testnet</span>
+                      <span className="text-cream font-medium">Creditcoin CC3 Testnet</span>
                     </div>
                     {inspectedCard.tokenId && (
                       <div className="flex justify-between items-center">
@@ -1003,7 +1040,7 @@ export function CabinetScreen({ onClose }: { onClose: () => void }) {
                   </button>
 
                   <div className="text-center">
-                    <Eyebrow>Cleanverse Drop</Eyebrow>
+                    <Eyebrow>Attestcoin RWA Drop</Eyebrow>
                     <h2 className="text-xl font-bold text-cream">Cards Minted On-Chain!</h2>
                     <p className="text-xs text-creamdim mt-0.5">
                       {mintedRwa.cards.length} collectible slab{mintedRwa.cards.length > 1 ? "s" : ""} added to your cabinet
@@ -1067,22 +1104,24 @@ export function CabinetScreen({ onClose }: { onClose: () => void }) {
                   <div className="w-full bg-ambersoft/40 border border-glassline rounded-xl px-4 py-2.5 flex items-center justify-between text-xs font-mono">
                     <div className="flex items-center gap-2 text-cream">
                       <span className="w-2 h-2 rounded-full bg-up shadow-[0_0_8px_rgba(110,232,200,0.8)]" />
-                      <span className="font-semibold text-cream">Monad Testnet</span>
+                      <span className="font-semibold text-cream">Creditcoin CC3 Testnet</span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-up/10 text-up border border-up/25 font-bold">
                         VERIFIED ON-CHAIN
                       </span>
                     </div>
 
-                    {mintedRwa.monadExplorerUrl && (
+                    {mintedRwa.creditcoinExplorerUrl && mintedRwa.txHash && mintedRwa.txHash !== "0x" ? (
                       <a
-                        href={mintedRwa.monadExplorerUrl}
+                        href={mintedRwa.creditcoinExplorerUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-xs font-semibold text-amber hover:text-amber/80 transition-colors"
                       >
-                        <span>Monadscan</span>
+                        <span>Creditcoin Explorer</span>
                         <ArrowSquareOut size={13} weight="bold" />
                       </a>
+                    ) : (
+                      <span className="text-xs text-creamdim">Minted to Showcase</span>
                     )}
                   </div>
 
@@ -1687,6 +1726,7 @@ function CardDetail({
 }) {
   const up = (card.delta30d ?? 0) >= 0;
   const panelRef = useRef<HTMLDivElement>(null);
+  const cardImageLink = getCardImageLink(card);
 
   useEscapeToClose(onClose);
   useEffect(() => {
@@ -1776,14 +1816,14 @@ function CardDetail({
               {card.origin === "onchain" ? "On-Chain Provenance" : "Physical Vault Verification"}
             </span>
             <div className="flex items-center gap-1">
-              <VerifiedBadge type="asset" verified={true} size="sm" detail={card.tokenId ? `CVA Asset ID: ${card.tokenId}` : "Cleanverse Verified Asset"} />
+              <VerifiedBadge type="asset" verified={true} size="sm" detail={card.tokenId ? `Creditcoin Token: #${card.tokenId}` : "Attestcoin Verified [0x0FD2]"} />
             </div>
           </div>
 
           <div className="space-y-1.5 font-mono text-[10px] text-creamdim/80 pt-1.5 border-t border-glassline">
             <div className="flex justify-between items-center">
               <span>Network / Layer:</span>
-              <span className="text-cream font-medium">Monad Testnet</span>
+              <span className="text-cream font-medium">Creditcoin CC3 Testnet</span>
             </div>
             {card.tokenId && (
               <div className="flex justify-between items-center">
@@ -1811,33 +1851,20 @@ function CardDetail({
           <div className="text-[12px] text-creamdim font-semibold">{fmtDate(card.acquiredAt)}</div>
         )}
 
-        {(card.priceUsd !== undefined || (card.origin === "onchain" && card.priceUrl)) && (
-          <div className="text-center">
-            {card.priceUsd !== undefined ? (
-              card.priceUrl ? (
-                <a
-                  href={card.priceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={card.origin === "onchain" ? "View on Renaiss" : "View price source"}
-                  className="text-cream text-xl font-extrabold inline-flex items-center gap-1 hover:text-amber transition-colors underline decoration-transparent hover:decoration-amber/60 underline-offset-4"
-                >
-                  {fmtUsd(card.priceUsd)}
-                  <ArrowSquareOut size={14} weight="bold" aria-hidden className="opacity-60" />
-                </a>
-              ) : (
-                <div className="text-cream text-xl font-extrabold">{fmtUsd(card.priceUsd)}</div>
-              )
-            ) : (
-              // Renaiss (/FMV)   —
+        {(card.priceUsd !== undefined || cardImageLink) && (
+          <div className="text-center flex flex-col items-center gap-1.5">
+            {card.priceUsd !== undefined && (
+              <div className="text-cream text-xl font-extrabold">{fmtUsd(card.priceUsd)}</div>
+            )}
+            {cardImageLink && (
               <a
-                href={card.priceUrl}
+                href={cardImageLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                title="View on Renaiss"
+                title="View the Card"
                 className="text-creamdim text-[13px] font-bold inline-flex items-center gap-1 hover:text-amber transition-colors"
               >
-                View on Renaiss
+                View the Card
                 <ArrowSquareOut size={13} weight="bold" aria-hidden className="opacity-60" />
               </a>
             )}

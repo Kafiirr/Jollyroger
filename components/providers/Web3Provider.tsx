@@ -15,21 +15,35 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 
 import "@rainbow-me/rainbowkit/styles.css";
 
-// Define Monad Testnet (Chain ID 10143)
-export const monadTestnet = defineChain({
-  id: 10143,
-  name: "Monad Testnet",
-  nativeCurrency: { name: "Monad", symbol: "MON", decimals: 18 },
+// Define Creditcoin CC3 Testnet (Chain ID 102031)
+export const creditcoinTestnet = defineChain({
+  id: 102031,
+  name: "Creditcoin CC3 Testnet",
+  nativeCurrency: { name: "Creditcoin", symbol: "tCTC", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://testnet-rpc.monad.xyz"] },
+    default: { http: ["https://rpc.cc3-testnet.creditcoin.network"] },
   },
   blockExplorers: {
-    default: { name: "MonadExplorer", url: "https://testnet.monadscan.com" },
+    default: { name: "CreditcoinExplorer", url: "https://creditcoin-testnet.blockscout.com" },
   },
   testnet: true,
 });
 
-const projectId = "jolly-roger-cleanverse-2026";
+// Define Ethereum Sepolia (Chain ID 11155111)
+export const sepolia = defineChain({
+  id: 11155111,
+  name: "Ethereum Sepolia",
+  nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: {
+    default: { http: [process.env.NEXT_PUBLIC_SEPOLIA_RPC || "https://ethereum-sepolia-rpc.publicnode.com"] },
+  },
+  blockExplorers: {
+    default: { name: "Etherscan", url: "https://sepolia.etherscan.io" },
+  },
+  testnet: true,
+});
+
+const projectId = "jolly-roger-creditcoin-2026";
 
 const connectors = connectorsForWallets(
   [
@@ -45,16 +59,17 @@ const connectors = connectorsForWallets(
     },
   ],
   {
-    appName: "Jolly Roger - Cleanverse (Monad Edition)",
+    appName: "Jolly Roger — Attestcoin Omnichain RWA",
     projectId,
   }
 );
 
-const config = createConfig({
+export const config = createConfig({
   connectors,
-  chains: [monadTestnet],
+  chains: [creditcoinTestnet, sepolia],
   transports: {
-    [monadTestnet.id]: http(),
+    [creditcoinTestnet.id]: http(),
+    [sepolia.id]: http(),
   },
   ssr: true,
 });
@@ -67,7 +82,7 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
           locale="en-US"
-          initialChain={monadTestnet}
+          initialChain={creditcoinTestnet}
           theme={darkTheme({
             accentColor: "#B78CFF", // Neon purple matching DESIGN.md
             accentColorForeground: "#17102E",

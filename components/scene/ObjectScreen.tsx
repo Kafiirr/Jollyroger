@@ -106,12 +106,12 @@ export function ObjectScreen({
           <div className="w-full space-y-2 pt-1">
             {address && (
               <a
-                href={`https://testnet.monadscan.com/address/${address}`}
+                href={`https://creditcoin-testnet.blockscout.com/address/${address}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-cream/[0.04] border border-glassline hover:bg-cream/[0.08] hover:text-amber text-xs font-bold text-cream transition-all"
               >
-                <span>View on Monad Explorer</span>
+                <span>View on Creditcoin Explorer</span>
                 <ArrowSquareOut size={13} weight="bold" />
               </a>
             )}

@@ -26,10 +26,12 @@ export function ScreenShell({
   title,
   onClose,
   children,
+  disableScale = false,
 }: {
   title?: string;
   onClose: () => void;
   children: ReactNode;
+  disableScale?: boolean;
 }) {
   const roomBg = useCurrentRoomBg();
 
@@ -59,10 +61,16 @@ export function ScreenShell({
         <ArrowLeft size={14} weight="bold" aria-hidden />
         Back to room
       </button>
-      <div className="relative flex-1 min-h-0">
-        <ViewportScale className="px-4 py-6 pt-20 sm:px-6">
-          {children}
-        </ViewportScale>
+      <div className="relative flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full">
+        {disableScale ? (
+          <div className="w-full min-h-full flex items-center justify-center px-4 py-8 pt-20 sm:px-8">
+            {children}
+          </div>
+        ) : (
+          <ViewportScale className="px-4 py-6 pt-20 sm:px-6">
+            {children}
+          </ViewportScale>
+        )}
       </div>
     </div>
   );

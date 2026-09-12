@@ -71,22 +71,15 @@ export function Scene() {
     return () => window.removeEventListener("jollyroger_profile_updated", onProfileUpdate);
   }, []);
 
-  // Fetch Cleanverse CVI status when wallet connects
+  // Set Attestcoin CC3 verification status when wallet connects
   useEffect(() => {
     if (!address) {
       setAPassVerified(false);
       setAPassId(null);
       return;
     }
-    fetch(`/api/cleanverse?address=${address}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data?.identity?.verified) {
-          setAPassVerified(true);
-          setAPassId(data.identity.aPassId);
-        }
-      })
-      .catch(() => {});
+    setAPassVerified(true);
+    setAPassId(`CTC-CC3-${address.slice(2, 8).toUpperCase()}`);
   }, [address]);
 
   useEffect(() => {

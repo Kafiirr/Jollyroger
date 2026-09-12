@@ -1,53 +1,58 @@
-# Jolly Roger: Cleanverse Hackathon One-Page Summary
+# Jolly Roger: BUIDL CTC 2026 Fall Hackathon One-Page Summary
 
-**Track**: Track 1 — Real World Assets (RWA)  
+**Hackathon**: BUIDL CTC 2026 Fall (Sponsored by Creditcoin & Credit Labs)  
+**Theme**: Attestcoin Protocol (Universal Smart Contracts - USC)  
+**Track**: Tokenized Real-World Assets (RWA) & Cross-Chain Infrastructure  
 **Project Name**: Jolly Roger  
+**Live Application**: [https://www.jollyroger.fun](https://www.jollyroger.fun)  
 **GitHub Repository**: [https://github.com/Kafiirr/Jollyroger](https://github.com/Kafiirr/Jollyroger)  
-**Deployed Network**: Monad Testnet (Chain ID: `10143`)  
-**Smart Contract**: [`0xddb7e56f23621627e60258ad466a1958940774e1`](https://testnet.monadexplorer.com/address/0xddb7e56f23621627e60258ad466a1958940774e1)  
+
+---
+
+## 🔗 Live Deployed Contracts & Infrastructure
+
+| Network | Contract / Component | Address / Endpoint | Status / Explorer |
+|---|---|---|---|
+| **Creditcoin CC3 Testnet** (`102031`) | `CreditcoinRWAVaultASC` (Attestcoin Smart Contract) | `0x1a8757a621b0ac08aa91312e282307fb2e21b87f` | [Creditcoin Explorer](https://creditcoin-testnet.blockscout.com/address/0x1a8757a621b0ac08aa91312e282307fb2e21b87f) |
+| **Ethereum Sepolia** (`11155111`) | `PhysicalVaultEscrow` (Source Physical Vault) | `0x0068856c80535b518dbe2a10b56e3c25f9139bb4` | [Etherscan Sepolia](https://sepolia.etherscan.io/address/0x0068856c80535b518dbe2a10b56e3c25f9139bb4) |
+| **Creditcoin Precompile** | Block Prover Precompile | `0x0000000000000000000000000000000000000FD2` | Native CC3 Precompile |
+| **Creditcoin Decoder** | EvmV1Decoder | `0x731c345d79Fb8BbDC541f9DF3b6317585F849F9f` | Verified CC3 Decoder |
+| **Proof Builder** | Attestcoin Proof Service | `https://proof-builder.cc3-testnet.creditcoin.network` | Active Proof Generation |
 
 ---
 
 ## 1. Problem
-Tokenizing high-value physical real-world assets (RWAs)—such as professionally graded collectible trading cards (PSA/BGS/CGC Gem Mint slabs)—faces three fundamental barriers:
-1. **Provenance & Trust Gap**: Physical assets often lack verifiable cryptographic custody and tamper-evident audit trails between physical vaults and on-chain tokens.
-2. **Friction in Compliance & Onboarding**: Traditional institutional KYC/AML compliance is clunky and alienates collectors, preventing seamless digital participation.
-3. **Disconnected Valuation & Liquidity**: Most RWA NFTs are static images disconnected from real-time secondary market liquidity and certified valuation indices.
+Tokenizing high-value physical real-world assets (RWAs)—such as certified Gem Mint graded trading cards (PSA/BGS/CGC slabs)—faces three persistent industry hurdles:
+1. **The Oracle & Bridge Vulnerability**: Cross-chain RWA protocols conventionally rely on centralized multisig oracles, trusted relayers, or off-chain indexers to verify physical custody deposits on primary chains (e.g. Ethereum), introducing single points of failure and exploit vectors.
+2. **Disconnected Physical Custody**: Physical vault deposits lack transparent, tamper-evident cryptographic bindings between the physical certificate and the target execution layer.
+3. **Boring, Static UX & Dangerous Cross-Chain Transactions**: Most RWA platforms are uninspiring tabular spreadsheets or static galleries without protective network enforcement, leading to misrouted transactions.
 
 ---
 
-## 2. Solution: Jolly Roger
-**Jolly Roger** turns interactive gamified actions (proof-of-play) into compliant, verifiable on-chain vaulted Real World Assets on **Monad**, anchored directly to the **Cleanverse Compliance & Verification Protocol** and **RenaissOS Market Index**:
+## 2. Solution: Jolly Roger Powered by Attestcoin
+**Jolly Roger** turns interactive gamer room interactions into verifiable, trustless cross-chain vaulted Real-World Assets on **Creditcoin CC3**, powered by the **Attestcoin Protocol (Universal Smart Contracts - USC)**:
 
-- **Proof-of-Play Onboarding**: Players interact with retro-futuristic arcade challenges and room cleaning tasks to earn physical-backed graded card drops.
-- **Instant Cleanverse CVI Registration**: Every connecting wallet is automatically verified or registered on-chain with a **Cleanverse A-Pass** (Tier 50 / Sub-tier 10).
-- **On-Chain Batch Minting**: Slabs are batch-minted to Monad Testnet using gas-optimized smart contracts carrying tamper-evident metadata and traceability hashes.
-- **Interactive 3D Cabinet & Loupe Inspector**: Slabs are showcased in a tactile 3D room with a 2.0× high-definition magnifying lens, real-time FMV valuations, and secondary market provenance links.
-- **Traceability Archive & Daily Mystery Drops**: An immutable custodial ledger tracks all on-chain mints, certified grading credentials, and compliance checks.
-
----
-
-## 3. CVI · CVA · CCP Integration Points (Track 1 RWA)
-
-### A. CVI (Cleanverse Verified Identity / A-Pass)
-- **Live Gateway Integration**: Directly connected to the official Cleanverse Cooperate Gateway (`https://uatapi.cleanverse.com/api/cooperate`) with partner credentials (`APP20260614112550LIDZXM`).
-- **Encrypted On-Chain Registration**: Implements AES-256-CBC encryption (16-zero-byte IV + base64 key) to call `POST /generate_apass`, issuing real on-chain Monad A-Passes (*Live UAT Record: `cvRecordId: 2044 / 2048`, Tier 50, US tag*).
-- **Live Verification**: Queries `POST /query_apass` and `POST /query_apass_list` to enforce compliance before unlocking minting or vault interactions.
-- **Cryptographic Binding**: Every slab links the player's A-Pass and wallet with a deterministic `cvaAssetId` and on-chain `traceabilityHash` generated via `keccak256(cvaAssetId : cardName : certNumber : walletAddress : timestamp)`.
-
-### B. CVA (Cleanverse Verified Assets / A-Token & Valuation)
-- **Compliant RWA Architecture**: Slabs strictly implement Cleanverse asset standards (`cleanOrigination: true`, `accreditedOnly: true`, physical vault audit report linkage).
-- **Real-Time FMV Indexing**: Live Fair Market Value (FMV) pricing is dynamically queried from **RenaissOS v1 Market Indices** (`/v1/indices/one-piece`, `/v1/search`), mapping institutional-grade valuations directly to on-chain tokens.
-- **Secondary Market Provenance**: Every slab includes direct verification deep-links to live secondary market trading records (`https://renaissos.com/card/...`).
-
-### C. CCP (Cleanverse Compliance Protocol)
-- **Pre-Transaction Compliance**: Pre-transaction rule verification executes via `verifyCCPTransaction`, ensuring all room and trading activities pass travel rule and risk checks (`Risk Score: 0/100`).
-- **Traceability Ledger**: All custodial events and slab mints are logged immutably in the in-app Traceability Archive.
+- **Trustless Dual-Chain Physical Escrow**: Collectors deposit physical graded slabs into `PhysicalVaultEscrow.sol` on Ethereum Sepolia, generating cryptographic vault receipts containing serial numbers, grades, and valuations.
+- **Attestcoin Precompile Verification (`0x0FD2`)**: Rather than trusting centralized bridge signers, `CreditcoinRWAVaultASC.sol` on Creditcoin CC3 directly invokes the native `BlockProverPrecompile` at `0x0000000000000000000000000000000000000FD2` and `EvmV1Decoder` (`0x731c345d79Fb8BbDC541f9DF3b6317585F849F9f`) to mathematically verify Sepolia state roots, transaction inclusion, and event receipts (`chainKey: 1`).
+- **Dynamic Live Renaiss Protocol API**: Real PSA/BGS One Piece graded cards (Luffy Gear 5 Manga, Nami OP01, Shanks, Yamato) fetched live with certification numbers and market appraisals (zero mock data).
+- **Multi-Layer Web3 Network Safety (`NetworkGuard`)**: Automatically prompts wallets to switch to Creditcoin CC3 Testnet; hard-pins chain IDs on every transaction to prevent accidental transfers on wrong chains (e.g. Arbitrum/Ethereum).
+- **Interactive 2D Gamer Room Experience**: Slabs are showcased in a tactile 2D collector room with smooth camera zoom focal points, a 2.0x inspection loupe, real-time FMV market valuations, an arcade mini-game with tCTC reward drops, and an on-chain guestbook with tCTC gifting.
 
 ---
 
-## 4. Deployed Chain & Technical Architecture
-- **Target Blockchain**: **Monad Testnet** (Chain ID: `10143`, 10,000 TPS, sub-second finality).
-- **Smart Contract**: `0xddb7e56f23621627e60258ad466a1958940774e1` (`batchMintRWACards` & `mintRWACard`).
-- **Cleanverse Protocol Gateway**: `https://uatapi.cleanverse.com/api/cooperate` (Sandbox App ID: `APP20260614112550LIDZXM`).
-- **Full Stack Architecture**: Next.js 14 App Router, Viem & Wagmi, Supabase PostgreSQL, RenaissOS v1 Protocol (with in-memory TTL caching).
+## 3. Attestcoin Protocol (USC) Architecture & Flow
+
+1. **Escrow Initiation**: User submits card details to `PhysicalVaultEscrow.sol` on Ethereum Sepolia (`0x0068...9bb4`), locking the physical item into verified custody.
+2. **Proof Extraction**: The transaction hash is processed via the Attestcoin Proof Builder API (`chainKey: 1`), returning cryptographic Merkle proofs and block continuity headers.
+3. **Precompile Attestation**: The user/relayer submits the proof to `CreditcoinRWAVaultASC.sol` (`0x1a8757a621b0ac08aa91312e282307fb2e21b87f`) on Creditcoin CC3.
+4. **On-Chain Precompile Execution**: The contract calls native precompile `0x0000000000000000000000000000000000000FD2`. If valid, the precompile returns verified proof data decoded by `EvmV1Decoder`, minting the certified RWA token directly into the user's wallet with zero centralized trust.
+
+---
+
+## 4. Technical Stack & Verified Contracts
+
+- **Execution Chain**: **Creditcoin CC3 Testnet** (Chain ID: `102031`, native currency `tCTC`).
+- **Source Escrow Chain**: **Ethereum Sepolia** (Chain ID: `11155111`, native currency `SepoliaETH`).
+- **Attestation Infrastructure**: Attestcoin Native Block Prover Precompile (`0x0FD2`), EvmV1Decoder (`0x731c345d79Fb8BbDC541f9DF3b6317585F849F9f`).
+- **Frontend Stack**: Next.js 14 App Router, Viem 2 & Wagmi 2 dual-chain client, Tailwind CSS with custom neon design tokens, Supabase PostgreSQL with RLS.
+- **Valuation & Metadata**: Live Renaiss Protocol API (`api.renaiss.xyz/v0/`), real-time market pricing with high-res card scans.

@@ -30,7 +30,25 @@ export async function GET(req: Request) {
   }
 
   if (!process.env.APITCG_API_KEY) {
-    return NextResponse.json({ error: "APITCG_API_KEY not configured" }, { status: 501 });
+    try {
+      const { getDynamicRenaissCards } = await import("@/lib/api/renaiss");
+      const category = gameParam === "pokemon" ? "POKEMON" : "ONE_PIECE";
+      const renaissCards = await getDynamicRenaissCards({ category, limit: 60 });
+      const q = name.toLowerCase();
+      const filtered = renaissCards.filter((c) => c.name.toLowerCase().includes(q));
+      const cards = filtered.map((c) => ({
+        id: c.tokenId,
+        name: c.name,
+        setName: c.franchise,
+        grade: c.grade,
+        franchise: c.franchise,
+        imageUrl: c.imageUrl,
+        priceUsd: c.priceUsd,
+      }));
+      return NextResponse.json({ cards });
+    } catch {
+      return NextResponse.json({ cards: [] });
+    }
   }
 
   // /

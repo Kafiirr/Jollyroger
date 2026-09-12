@@ -16,7 +16,7 @@ import { ScreenShell } from "./ScreenShell";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { useRoom } from "../RoomContext";
 import { supabase } from "@/lib/supabase";
-import { CLEANVERSE_RWA_CARD_ABI, CLEANVERSE_RWA_CARD_ADDRESS } from "@/lib/contracts/CleanverseRWACardABI";
+import { CREDITCOIN_RWA_VAULT_ABI, CREDITCOIN_RWA_VAULT_ADDRESS } from "@/lib/contracts/CreditcoinRWAVaultABI";
 
 export interface MintedCardItem {
   id: string;
@@ -178,7 +178,7 @@ const BGM_FADE_MS = 1200; // BGM
 // 5      card2( ) .
 const CARD_SRC = "/game/card.png";
 const CARD2_SRC = "/game/card2.png";
-// 5  / 10(+15...)        —     (card/card2)
+// 5 / 10(+15...) milestone celebrations during gameplay — mystery booster packs
 const CELEBRATION_SILVER_SRC = "/game/silvercard1.png";
 const CELEBRATION_GOLD_SRC = "/game/goldcard1.png";
 const CARD_WIDTH = 6;
@@ -348,7 +348,7 @@ export function ComputerScreen({ onClose }: { onClose: () => void }) {
       tokenId?: string;
     }>;
     txHash: string;
-    monadExplorerUrl: string;
+    creditcoinExplorerUrl?: string;
     cvaAssetId: string;
     traceabilityHash: string;
   } | null>(null);
@@ -381,11 +381,11 @@ export function ComputerScreen({ onClose }: { onClose: () => void }) {
     if (!pendingRewards || pendingRewards.count <= 0 || !address) return;
     setWeb3Error(null);
     setIsMintingRwa(true);
-    setMintProgress("Minting on Monad Testnet (Please wait)...");
+    setMintProgress("Minting on Creditcoin CC3 Testnet (Please wait)...");
 
     try {
       // Step 1: Get prepared card data + mint parameters from backend
-      const res = await fetch("/api/cleanverse/mint", {
+      const res = await fetch("/api/attestcoin/mint", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -448,9 +448,9 @@ export function ComputerScreen({ onClose }: { onClose: () => void }) {
       setMintedRwa({
         cards: cardsToMint,
         txHash: lastTxHash,
-        monadExplorerUrl: `https://testnet.monadscan.com/tx/${lastTxHash}`,
-        cvaAssetId: cardsToMint[0].mintArgs.cvaAssetId,
-        traceabilityHash: cardsToMint[0].mintArgs.traceabilityHash,
+        creditcoinExplorerUrl: `https://creditcoin-testnet.blockscout.com/tx/${lastTxHash}`,
+        cvaAssetId: cardsToMint[0].tokenId || `CTC-${Date.now()}`,
+        traceabilityHash: lastTxHash || "0x",
       });
 
       setPendingRewards(null);
@@ -1106,11 +1106,11 @@ export function ComputerScreen({ onClose }: { onClose: () => void }) {
                   className="w-full bg-amber hover:bg-amber/90 text-inkdark font-extrabold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider shadow-[0_0_25px_rgba(183,140,255,0.45)] transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <ShieldCheck size={16} weight="bold" />
-                  <span>{isMintingRwa ? (mintProgress || "Minting...") : `Mint ${pendingRewards.count} Card${pendingRewards.count > 1 ? "s" : ""} on Monad`}</span>
+                  <span>{isMintingRwa ? (mintProgress || "Minting...") : `Mint ${pendingRewards.count} Card${pendingRewards.count > 1 ? "s" : ""} on Creditcoin CC3`}</span>
                 </button>
 
                 <span className="text-[10px] text-creamdim/70 font-mono">
-                  Monad Testnet · Seamless Minting
+                  Creditcoin CC3 Testnet · Verifiable Minting
                 </span>
 
                 {web3Error && (
@@ -1197,7 +1197,7 @@ export function ComputerScreen({ onClose }: { onClose: () => void }) {
         )}
       </div>
 
-      {/* Monad Testnet On-Chain Minted Modal */}
+      {/* Creditcoin CC3 On-Chain Minted Modal */}
       {(isMintingRwa || mintedRwa) && (
         <div
           className="fixed inset-0 z-[70] bg-bg/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
@@ -1213,7 +1213,7 @@ export function ComputerScreen({ onClose }: { onClose: () => void }) {
             {isMintingRwa ? (
               <div className="py-10 space-y-3 flex flex-col items-center">
                 <span className="w-12 h-12 rounded-full border-2 border-amber/30 border-t-amber animate-spin" />
-                <p className="text-sm text-amber font-bold animate-pulse">{mintProgress || "Minting card(s) on Monad Testnet..."}</p>
+                <p className="text-sm text-amber font-bold animate-pulse">{mintProgress || "Minting card(s) on Creditcoin CC3..."}</p>
                 <p className="text-xs text-creamdim">Transaction initiated...</p>
               </div>
             ) : mintedRwa ? (
@@ -1278,7 +1278,7 @@ export function ComputerScreen({ onClose }: { onClose: () => void }) {
                   <div className="bg-ambersoft/40 rounded-xl p-3 border border-glassline text-xs font-mono space-y-1.5 text-left text-creamdim">
                     <div className="flex justify-between items-center">
                       <span>Network:</span>
-                      <span className="text-cream font-medium">Monad Testnet</span>
+                      <span className="text-cream font-medium">Creditcoin CC3 Testnet</span>
                     </div>
                     {inspectedCard.tokenId && (
                       <div className="flex justify-between items-center">
@@ -1335,7 +1335,7 @@ export function ComputerScreen({ onClose }: { onClose: () => void }) {
                   </button>
 
                   <div className="text-center">
-                    <Eyebrow>Cleanverse Drop</Eyebrow>
+                    <Eyebrow>Attestcoin RWA Drop</Eyebrow>
                     <h2 className="text-xl font-bold text-cream">Cards Minted On-Chain!</h2>
                     <p className="text-xs text-creamdim mt-0.5">
                       {mintedRwa.cards.length} collectible slab{mintedRwa.cards.length > 1 ? "s" : ""} added to your cabinet
@@ -1399,22 +1399,24 @@ export function ComputerScreen({ onClose }: { onClose: () => void }) {
                   <div className="w-full bg-ambersoft/40 border border-glassline rounded-xl px-4 py-2.5 flex items-center justify-between text-xs font-mono">
                     <div className="flex items-center gap-2 text-cream">
                       <span className="w-2 h-2 rounded-full bg-up shadow-[0_0_8px_rgba(110,232,200,0.8)]" />
-                      <span className="font-semibold text-cream">Monad Testnet</span>
+                      <span className="font-semibold text-cream">Creditcoin CC3 Testnet</span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-up/10 text-up border border-up/25 font-bold">
                         VERIFIED ON-CHAIN
                       </span>
                     </div>
 
-                    {mintedRwa.monadExplorerUrl && (
+                    {mintedRwa.creditcoinExplorerUrl && mintedRwa.txHash && mintedRwa.txHash !== "0x" ? (
                       <a
-                        href={mintedRwa.monadExplorerUrl}
+                        href={mintedRwa.creditcoinExplorerUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-xs font-semibold text-amber hover:text-amber/80 transition-colors"
                       >
-                        <span>Monadscan</span>
+                        <span>Creditcoin Explorer</span>
                         <ArrowSquareOut size={13} weight="bold" />
                       </a>
+                    ) : (
+                      <span className="text-xs text-creamdim">Minted to Collection</span>
                     )}
                   </div>
 
