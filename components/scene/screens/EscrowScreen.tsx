@@ -14,6 +14,8 @@ import {
   Flame,
   Clock,
   ArrowsClockwise,
+  WarningCircle,
+  XCircle,
 } from "@phosphor-icons/react";
 import { useAccount, useWriteContract, useSwitchChain } from "wagmi";
 import { useRoom } from "../RoomContext";
@@ -33,6 +35,57 @@ interface VaultableCard {
   priceUsd: number;
   imageUrl: string;
   franchise: string;
+}
+
+function formatWeb3ErrorMessage(err: any): string {
+  if (!err) return "Transaction rejected or network error.";
+
+  const message = String(err.message || "");
+  const details = String(err.details || "");
+  const shortMessage = String(err.shortMessage || "");
+  const combined = `${message} ${details} ${shortMessage}`.toLowerCase();
+
+  // User canceled / rejected the prompt in their wallet
+  if (
+    err.name === "UserRejectedRequestError" ||
+    err.code === 4001 ||
+    combined.includes("user rejected") ||
+    combined.includes("user denied") ||
+    combined.includes("rejected the request") ||
+    combined.includes("user declined") ||
+    combined.includes("transaction canceled") ||
+    combined.includes("transaction cancelled")
+  ) {
+    return "Transaction canceled in wallet.";
+  }
+
+  // Insufficient balance for gas
+  if (combined.includes("insufficient funds") || combined.includes("exceeds balance")) {
+    return "Insufficient funds for gas fees.";
+  }
+
+  // Network / RPC connection error
+  if (
+    combined.includes("network error") ||
+    combined.includes("failed to fetch") ||
+    combined.includes("timeout") ||
+    combined.includes("could not connect")
+  ) {
+    return "Network connection issue. Please check your RPC connection.";
+  }
+
+  // Clean shortMessage provided by Viem
+  if (err.shortMessage && typeof err.shortMessage === "string" && err.shortMessage.length < 150) {
+    return err.shortMessage;
+  }
+
+  // Fallback: extract the concise first sentence/line instead of the huge Viem debug stack
+  const firstLine = message.split("\n")[0].trim();
+  if (firstLine && firstLine.length < 120 && !firstLine.includes("Request Arguments")) {
+    return firstLine;
+  }
+
+  return "Transaction failed. Please try again.";
 }
 
 export function EscrowScreen({ onClose }: { onClose: () => void }) {
@@ -386,10 +439,19 @@ export function EscrowScreen({ onClose }: { onClose: () => void }) {
       ]);
     } catch (err: any) {
       console.error("Vault & Attest error:", err);
-      setErrorMsg(err.message || "Transaction rejected or network error.");
-      setSteps((prev) =>
-        prev.map((s) => (s.status === "active" ? { ...s, status: "failed" } : s))
-      );
+      const cleanMessage = formatWeb3ErrorMessage(err);
+      setErrorMsg(cleanMessage);
+
+      const isCanceled = cleanMessage.toLowerCase().includes("cancel");
+
+      if (isCanceled && !sepoliaTxHash) {
+        // User declined before Sepolia deposit: reset steps cleanly so user can try again
+        setSteps([]);
+      } else {
+        setSteps((prev) =>
+          prev.map((s) => (s.status === "active" ? { ...s, status: "failed" } : s))
+        );
+      }
     } finally {
       setVaulting(false);
     }
@@ -700,8 +762,29 @@ export function EscrowScreen({ onClose }: { onClose: () => void }) {
             )}
 
             {errorMsg && (
-              <div className="w-full p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-lg text-rose-300 text-xs text-center font-medium">
-                {errorMsg}
+              <div
+                className={`w-full p-2.5 rounded-lg text-xs flex items-center justify-between gap-2 border font-medium transition-all ${
+                  errorMsg.toLowerCase().includes("cancel")
+                    ? "bg-amber/10 border-amber/30 text-amber"
+                    : "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {errorMsg.toLowerCase().includes("cancel") ? (
+                    <WarningCircle size={15} weight="bold" className="shrink-0 text-amber" />
+                  ) : (
+                    <XCircle size={15} weight="bold" className="shrink-0 text-rose-400" />
+                  )}
+                  <span className="truncate">{errorMsg}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setErrorMsg(null)}
+                  className="shrink-0 text-cream/40 hover:text-cream text-xs px-1"
+                  aria-label="Dismiss error message"
+                >
+                  &times;
+                </button>
               </div>
             )}
 

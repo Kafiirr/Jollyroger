@@ -461,9 +461,14 @@ export function ComputerScreen({ onClose }: { onClose: () => void }) {
       } else if (address) {
         supabase.from("unclaimed_rewards").delete().eq("wallet_address", address.toLowerCase());
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Minting error:", err);
-      setWeb3Error("Failed minting cards.");
+      const isUserRejected =
+        err?.name === "UserRejectedRequestError" ||
+        err?.code === 4001 ||
+        String(err?.message || "").toLowerCase().includes("user rejected") ||
+        String(err?.details || "").toLowerCase().includes("user rejected");
+      setWeb3Error(isUserRejected ? "Transaction canceled in wallet." : "Failed minting cards.");
     } finally {
       setIsMintingRwa(false);
       setMintProgress("");
