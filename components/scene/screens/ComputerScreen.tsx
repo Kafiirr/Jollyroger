@@ -421,29 +421,8 @@ export function ComputerScreen({ onClose }: { onClose: () => void }) {
         };
       }>;
 
-      // Step 2: The backend has already minted the cards using its own wallet.
-      // We just extract the txHash returned from the API.
+      // Step 2: The backend has already minted and persisted the cards
       const lastTxHash = data.txHash || "0x";
-
-      // Save all minted cards to Supabase DB
-      const userRoomId = address.toLowerCase();
-      for (const card of cardsToMint) {
-        try {
-          await supabase.from("showcase_cards").insert({
-            name: card.name,
-            grade: card.grade,
-            franchise: card.franchise,
-            image_url: card.imageUrl,
-            acquired_at: card.acquiredAt || new Date().toISOString().slice(0, 10),
-            origin: "onchain",
-            token_id: card.tokenId,
-            room_id: userRoomId,
-            wallet_address: address.toLowerCase(),
-          });
-        } catch (dbErr) {
-          console.warn("Failed saving card to Supabase DB:", dbErr);
-        }
-      }
 
       setMintedRwa({
         cards: cardsToMint,

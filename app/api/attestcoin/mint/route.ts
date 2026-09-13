@@ -58,54 +58,70 @@ const ipv4Fetch = (input: any, init?: any): Promise<Response> => {
 
 export async function POST(req: NextRequest) {
   try {
-    const { walletAddress, score = 0, count = 1 } = await req.json();
+    const { walletAddress, score = 0, count = 1, card } = await req.json();
 
     if (!walletAddress || typeof walletAddress !== "string") {
       return NextResponse.json({ error: "Missing walletAddress" }, { status: 400 });
     }
 
-    // Allow minting whatever number of cards the user earned (up to 50)
-    const mintCount = Math.min(Math.max(1, count), 50);
-    const dynamicCards = await getDynamicRenaissCards({ category: "ONE_PIECE", limit: 50 });
-    
-    // Shuffle the card pool to provide high variety
-    const pool = [...dynamicCards];
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
-
     const selectedCards = [];
 
-    for (let i = 0; i < mintCount; i++) {
-      const template =
-        pool.length > 0
-          ? pool[i % pool.length]
-          : {
-              tokenId: String(Date.now() + i),
-              name: "PSA 10 Gem Mint Monkey D. Luffy",
-              grade: "PSA 10 Gem Mint",
-              franchise: "One Piece TCG",
-              priceUsd: 653,
-              imageUrl: "/cards/luffy-gear5-manga.png",
-              certNumber: 92799146,
-              rawCert: "PSA92799146",
-              origin: "physical" as const,
-            };
-
-      const certNum = template.certNumber || Math.floor(10000000 + Math.random() * 90000000);
+    if (card) {
+      const certNum = card.certNumber || Math.floor(10000000 + Math.random() * 90000000);
       selectedCards.push({
-        id: `ctc_card_${Date.now()}_${i}`,
-        name: template.name,
-        grade: template.grade,
-        franchise: template.franchise,
-        priceUsd: template.priceUsd,
-        imageUrl: template.imageUrl,
+        id: `ctc_vault_${Date.now()}_0`,
+        name: card.name,
+        grade: card.grade,
+        franchise: card.franchise || "One Piece TCG",
+        priceUsd: Number(card.priceUsd) || 100,
+        imageUrl: card.imageUrl || "/cards/luffy-gear5-manga.png",
         certNumber: String(certNum),
-        tokenId: String(template.tokenId || (Date.now() % 100000 + i)),
-        origin: "physical" as const,
+        tokenId: String(card.tokenId || certNum),
+        origin: "onchain" as const,
         acquiredAt: new Date().toISOString().slice(0, 10),
       });
+    } else {
+      // Allow minting whatever number of cards the user earned (up to 50)
+      const mintCount = Math.min(Math.max(1, count), 50);
+      const dynamicCards = await getDynamicRenaissCards({ category: "ONE_PIECE", limit: 50 });
+      
+      // Shuffle the card pool to provide high variety
+      const pool = [...dynamicCards];
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+
+      for (let i = 0; i < mintCount; i++) {
+        const template =
+          pool.length > 0
+            ? pool[i % pool.length]
+            : {
+                tokenId: String(Date.now() + i),
+                name: "PSA 10 Gem Mint Monkey D. Luffy",
+                grade: "PSA 10 Gem Mint",
+                franchise: "One Piece TCG",
+                priceUsd: 653,
+                imageUrl: "/cards/luffy-gear5-manga.png",
+                certNumber: 92799146,
+                rawCert: "PSA92799146",
+                origin: "physical" as const,
+              };
+
+        const certNum = template.certNumber || Math.floor(10000000 + Math.random() * 90000000);
+        selectedCards.push({
+          id: `ctc_card_${Date.now()}_${i}`,
+          name: template.name,
+          grade: template.grade,
+          franchise: template.franchise,
+          priceUsd: template.priceUsd,
+          imageUrl: template.imageUrl,
+          certNumber: String(certNum),
+          tokenId: String(template.tokenId || (Date.now() % 100000 + i)),
+          origin: "physical" as const,
+          acquiredAt: new Date().toISOString().slice(0, 10),
+        });
+      }
     }
 
     const privateKey = process.env.PRIVATE_KEY;

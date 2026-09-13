@@ -257,7 +257,6 @@ export function EscrowScreen({ onClose }: { onClose: () => void }) {
   ]);
 
   const { writeContractAsync: writeSepolia } = useWriteContract();
-  const { writeContractAsync: writeCreditcoin } = useWriteContract();
 
   const handleVaultAndAttest = async () => {
     if (hasClaimedToday) {
@@ -345,56 +344,49 @@ export function EscrowScreen({ onClose }: { onClose: () => void }) {
         { label: "Mint Verified RWA Provenance on Creditcoin CC3", status: "pending" },
       ]);
 
-      // 3. Switch to Creditcoin CC3 Testnet for attestation & minting
-      if (chainId !== 102031) {
-        try {
-          if (!switchChainAsync) throw new Error("Wallet does not support automatic network switching.");
-          await switchChainAsync({ chainId: 102031 });
-        } catch (switchErr: any) {
-          console.warn("User rejected switch to Creditcoin CC3:", switchErr);
-          setErrorMsg("Action canceled: Please switch your wallet to Creditcoin CC3 Testnet to complete attestation.");
-          setVaulting(false);
-          return;
-        }
-      }
-
-      // 4. Submit directly or via precompile on Creditcoin CC3
-      const cc3Tx = await writeCreditcoin({
-        address: CREDITCOIN_RWA_VAULT_ADDRESS,
-        abi: CREDITCOIN_RWA_VAULT_ABI,
-        functionName: "mintDirectCard",
-        chainId: 102031,
-        args: [
-          (address || "0xf23480B0AFa902bb7646de92b2B538a6A769FdDA") as `0x${string}`,
-          selectedCard.name,
-          selectedCard.grade,
-          BigInt(selectedCard.certNumber),
-          BigInt(selectedCard.priceUsd * 100),
-          selectedCard.imageUrl,
-        ],
-      });
-
-      setCreditcoinTxHash(cc3Tx);
-      setAttestedTokenId(Date.now() % 10000);
+      // 3. Settle and Mint Verified RWA on Creditcoin CC3 via Attestcoin Protocol Relayer
+      setSteps([
+        {
+          label: "Deposit Physical Card into Sepolia Vault",
+          detail: `Sepolia Tx: ${txHash.slice(0, 10)}...${txHash.slice(-6)}`,
+          status: "success",
+        },
+        {
+          label: "Creditcoin Attestor Consensus & Proof Generation",
+          detail: `Block ${proveData.blockHeight || "Attested"} linked via Continuity Chain`,
+          status: "success",
+        },
+        { label: "Block Prover Precompile Synchronous Verification", status: "active" },
+        { label: "Mint Verified RWA Provenance on Creditcoin CC3", status: "pending" },
+      ]);
 
       const userWallet = (address || "0xf23480b0afa902bb7646de92b2b538a6a769fdda").toLowerCase();
 
-      // Save to showcase_cards in Supabase DB for instant cabinet display
-      try {
-        await supabase.from("showcase_cards").insert({
-          name: selectedCard.name,
-          grade: selectedCard.grade,
-          franchise: selectedCard.franchise,
-          image_url: selectedCard.imageUrl,
-          acquired_at: new Date().toISOString().slice(0, 10),
-          origin: "onchain",
-          token_id: `ctc_vault_${selectedCard.certNumber}`,
-          room_id: userWallet,
-          wallet_address: userWallet,
-        });
-      } catch (dbErr) {
-        console.warn("Could not save vaulted card to Supabase:", dbErr);
+      // Submit cross-chain RWA settlement on Creditcoin CC3
+      const mintRes = await fetch("/api/attestcoin/mint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: userWallet,
+          card: {
+            name: selectedCard.name,
+            grade: selectedCard.grade,
+            franchise: selectedCard.franchise,
+            priceUsd: selectedCard.priceUsd,
+            imageUrl: selectedCard.imageUrl,
+            certNumber: String(selectedCard.certNumber),
+          },
+        }),
+      });
+
+      const mintData = await mintRes.json();
+      if (!mintRes.ok || !mintData.success || !mintData.txHash) {
+        throw new Error(mintData.error || "Failed settling RWA provenance on Creditcoin CC3.");
       }
+
+      const cc3Tx = mintData.txHash;
+      setCreditcoinTxHash(cc3Tx);
+      setAttestedTokenId(Date.now() % 10000);
 
       // Record daily claim in Supabase daily_mystery_claims & localStorage (1x/day limit)
       try {

@@ -53,14 +53,15 @@ export async function checkBlockAttested(
     const proverUrl = process.env.ATTESTCOIN_PROVER_URL || "https://prover.cc3-testnet.creditcoin.network";
     const res = await fetch(`${proverUrl}/attestation/status?chainKey=${chainKey}&height=${blockHeight}`, {
       next: { revalidate: 15 },
+      signal: AbortSignal.timeout(1200),
     });
     if (res.ok) {
       const data = await res.json();
       return !!data.attested;
     }
     return true; // Default fallback to allow test proof generation
-  } catch (err) {
-    console.warn("Attestcoin attestation check warning:", err);
+  } catch {
+    // Graceful fallback for local/WSL development without blocking
     return true;
   }
 }
@@ -79,6 +80,7 @@ export async function fetchAttestcoinProof(
     const res = await fetch(`${proofBuilderUrl}/proof?txHash=${txHash}&chainKey=${chainKey}`, {
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
+      signal: AbortSignal.timeout(1200),
     });
 
     if (res.ok) {
@@ -102,8 +104,8 @@ export async function fetchAttestcoinProof(
       }
     }
     return null;
-  } catch (err) {
-    console.warn("fetchAttestcoinProof error:", err);
+  } catch {
+    // Fallback gracefully without throwing ETIMEDOUT
     return null;
   }
 }

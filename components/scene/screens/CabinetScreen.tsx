@@ -411,25 +411,6 @@ export function CabinetScreen({ onClose }: { onClose: () => void }) {
 
       setMintProgress(`Seamlessly minting ${cardsToMint.length} card${cardsToMint.length > 1 ? "s" : ""} on Creditcoin CC3 Testnet...`);
 
-      const userRoomId = address.toLowerCase();
-      for (const card of cardsToMint) {
-        try {
-          await supabase.from("showcase_cards").insert({
-            name: card.name,
-            grade: card.grade,
-            franchise: card.franchise,
-            image_url: card.imageUrl,
-            acquired_at: card.acquiredAt || new Date().toISOString().slice(0, 10),
-            origin: "onchain",
-            token_id: card.tokenId,
-            room_id: userRoomId,
-            wallet_address: address.toLowerCase(),
-          });
-        } catch (dbErr) {
-          console.warn("Failed saving card to Supabase DB:", dbErr);
-        }
-      }
-
       await supabase.from("unclaimed_rewards").delete().eq("id", unclaimedRewards.id);
       setUnclaimedRewards(null);
       await loadSaved();
