@@ -6,12 +6,26 @@ export interface UserProfile {
   avatarUrl: string;
 }
 
-const EMPTY_PROFILE: UserProfile = { username: "", avatarUrl: "" };
+export const EMPTY_PROFILE: UserProfile = { username: "", avatarUrl: "" };
 
 /** Build a wallet-scoped localStorage key so each address has its own slot. */
 function localKey(walletAddress?: string): string | null {
   if (!walletAddress) return null;
   return `jollyroger_profile_${walletAddress.toLowerCase()}`;
+}
+
+/**
+ * Clear any locally-cached profile for a specific wallet address.
+ */
+export function clearLocalProfile(walletAddress?: string): void {
+  if (typeof window === "undefined") return;
+  const key = localKey(walletAddress);
+  if (key) {
+    try {
+      localStorage.removeItem(key);
+      window.dispatchEvent(new CustomEvent("jollyroger_profile_updated", { detail: EMPTY_PROFILE }));
+    } catch {}
+  }
 }
 
 /**
@@ -60,15 +74,20 @@ export async function fetchRemoteProfile(walletAddress?: string): Promise<UserPr
   const id = walletAddress.toLowerCase();
   const key = localKey(walletAddress);
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("user_profiles")
       .select("username, avatar_url")
       .eq("id", id)
       .maybeSingle();
 
-    if (data && (data.username || data.avatar_url)) {
+    if (error) {
+      console.warn("Error fetching remote profile:", error);
+      return null;
+    }
+
+    if (data && data.username) {
       const profile: UserProfile = {
-        username: (data.username || "").toLowerCase(),
+        username: data.username.toLowerCase(),
         avatarUrl: data.avatar_url || "",
       };
       if (typeof window !== "undefined" && key) {
@@ -78,6 +97,11 @@ export async function fetchRemoteProfile(walletAddress?: string): Promise<UserPr
         } catch {}
       }
       return profile;
+    } else {
+      // Authoritative DB indicates this wallet has no user profile row.
+      // Purge any stale local cache so the client does not retain ghost account info.
+      clearLocalProfile(walletAddress);
+      return null;
     }
   } catch (err) {
     console.warn("Error fetching remote profile:", err);

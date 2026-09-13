@@ -6,7 +6,7 @@ import { getRoom, HOME_ROOM_ID } from "@/lib/rooms";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { useAvatar } from "@/lib/useAvatar";
 import { useProfileName } from "@/lib/useProfileName";
-import { getLocalProfile, fetchRemoteProfile, UserProfile } from "@/lib/userProfile";
+import { fetchRemoteProfile, UserProfile } from "@/lib/userProfile";
 import { useAccount } from "wagmi";
 import { ProfileSettingsModal } from "./ProfileSettingsModal";
 import { BackgroundMusic } from "./BackgroundMusic";
@@ -57,9 +57,13 @@ export function Scene() {
   const [aPassId, setAPassId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!address) return;
+    if (!address) {
+      setUserProfile({ username: "", avatarUrl: "" });
+      return;
+    }
     fetchRemoteProfile(address).then((remote) => {
       if (remote) setUserProfile(remote);
+      else setUserProfile({ username: "", avatarUrl: "" });
     });
   }, [address]);
 
@@ -111,7 +115,9 @@ export function Scene() {
   const roomActive = loggedIn || isVisiting;
   const objectsReady = loggedIn || isVisiting;
 
-  // Auto-skip login intro if wallet is connected and user already has a profile.
+  // Verify user profile against Supabase when wallet connects.
+  // If user has a valid profile in DB, auto-enter room.
+  // If user has NO record in DB (new user or wiped DB), enforce onboarding flow.
   // When wallet disconnects, reset back to the initial splash screen.
   useEffect(() => {
     if (!address) {
@@ -121,20 +127,24 @@ export function Scene() {
       setTransform("");
       return;
     }
-    // Check local profile for THIS wallet only (instant)
-    const local = getLocalProfile(address);
-    if (local.username) {
-      setEntered(true);
-      setLoggedIn(true);
-      return;
-    }
-    // Fallback: check remote profile
+
+    let isSubscribed = true;
+
     fetchRemoteProfile(address).then((remote) => {
+      if (!isSubscribed) return;
       if (remote?.username) {
         setEntered(true);
         setLoggedIn(true);
+      } else {
+        // Not registered in Supabase: keep in initial unauthenticated state
+        setEntered(false);
+        setLoggedIn(false);
       }
     });
+
+    return () => {
+      isSubscribed = false;
+    };
   }, [address]);
 
   useEffect(() => {

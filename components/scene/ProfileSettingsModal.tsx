@@ -23,6 +23,9 @@ export function ProfileSettingsModal({ onClose }: { onClose: () => void }) {
       if (remote) {
         if (remote.username) setUsername(remote.username);
         if (remote.avatarUrl) setAvatarUrl(remote.avatarUrl);
+      } else {
+        setUsername("");
+        setAvatarUrl("");
       }
     });
   }, [address]);

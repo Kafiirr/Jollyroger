@@ -17,7 +17,7 @@ import {
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useSwitchChain } from "wagmi";
 import { ROOM_IMG_DARK } from "@/lib/spots";
-import { getLocalProfile, saveUserProfile, fetchRemoteProfile, isUsernameAvailable } from "@/lib/userProfile";
+import { saveUserProfile, fetchRemoteProfile, isUsernameAvailable } from "@/lib/userProfile";
 import { uploadAvatarDirectToR2 } from "@/lib/uploadToR2";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 
@@ -35,7 +35,7 @@ export function LoginIntro({ onLogin, onCancel }: { onLogin: () => void; onCance
 
   const isWalletConnected = Boolean(isConnected && address);
 
-  // Reset form state when wallet address changes, then load wallet-scoped profile
+  // Reset form state when wallet address changes, then verify profile from database
   useEffect(() => {
     if (!address) {
       setUsername("");
@@ -45,19 +45,30 @@ export function LoginIntro({ onLogin, onCancel }: { onLogin: () => void; onCance
       setUsernameStatus('idle');
       return;
     }
-    // Read local cache for this specific wallet
-    const local = getLocalProfile(address);
-    setUsername(local.username);
-    setAvatarUrl(local.avatarUrl);
-    // Existing user with a stored name — mark as available (it's their own)
-    if (local.username) setUsernameStatus('available');
-    // Then fetch remote (may overwrite with fresher data)
+
+    // Default to clean state for this wallet
+    setUsername("");
+    setAvatarUrl("");
+    setUsernameStatus('idle');
+
+    let isSubscribed = true;
     fetchRemoteProfile(address).then((remote) => {
-      if (remote) {
-        if (remote.username) { setUsername(remote.username); setUsernameStatus('available'); }
-        if (remote.avatarUrl) setAvatarUrl(remote.avatarUrl);
+      if (!isSubscribed) return;
+      if (remote && remote.username) {
+        setUsername(remote.username);
+        setAvatarUrl(remote.avatarUrl || "");
+        setUsernameStatus('available');
+      } else {
+        // No remote profile found in database: ensure pristine onboarding inputs
+        setUsername("");
+        setAvatarUrl("");
+        setUsernameStatus('idle');
       }
     });
+
+    return () => {
+      isSubscribed = false;
+    };
   }, [address]);
 
   // Debounced username availability check
